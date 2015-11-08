@@ -23,7 +23,9 @@ public class ArrayUtility {
      * @return list generated after intersecting list1 and list2.
      */
     public static Posting[] and(Posting[] list1, Posting[] list2) {
-        if (list1 == null) {
+        if (list1 == null && list2 == null) {
+            return new Posting[0];
+        } else if (list1 == null) {
             return list2;
         } else if (list2 == null) {
             return list1;
@@ -53,7 +55,9 @@ public class ArrayUtility {
      * @return list generated after union of list1 and list2.
      */
     public static Posting[] or(Posting[] list1, Posting[] list2) {
-        if (list1 == null) {
+        if (list1 == null && list2 == null) {
+            return new Posting[0];
+        } else if (list1 == null) {
             return list2;
         } else if (list2 == null) {
             return list1;
@@ -98,10 +102,10 @@ public class ArrayUtility {
      * @return list generated after NOT operation.
      */
     public static Posting[] remove(Posting[] list1, Posting[] notList) {
-        if (notList == null) {
+        if (notList == null && list1 != null) {
             return list1;
         } else if (list1 == null) {
-            return null;
+            return new Posting[0];
         }
         List<Posting> result = new ArrayList<>(list1.length);
         int i = 0, j = 0;

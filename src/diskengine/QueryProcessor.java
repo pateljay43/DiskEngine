@@ -8,6 +8,7 @@ package diskengine;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.PriorityQueue;
 import java.util.Scanner;
 import java.util.TreeSet;
 
@@ -20,6 +21,7 @@ public class QueryProcessor {
     private static DiskPositionalIndex index;
     private static PorterStemmer porterstemmer;
     private static QueryStreamer queryStreamer;
+    private static PriorityQueue<Posting> pq;
 
     public QueryProcessor(DiskPositionalIndex _index) {
         index = _index;
@@ -27,12 +29,28 @@ public class QueryProcessor {
         queryStreamer = new QueryStreamer();
     }
 
-    public Posting[] processQuery(String query) {
+    /**
+     * process the query and returns the result from the disk index
+     *
+     * @param query query to be processed
+     * @param mode mode to process query (true = boolean, false = ranked)
+     * @param initialCapacity number of elements to be returned
+     * @return query result containing the Postings
+     */
+    public Posting[] processQuery(String query, boolean mode, int initialCapacity) {
         query = query.replaceAll("[^A-Za-z0-9-+)(/ \"]", "")
                 .replaceAll("(( )( )+)", " ")
                 .trim();
         String[] orSplit = query.split("\\+");
         Posting[] result = null;
+
+        if (!mode) {    // init priorityqueue only in ranked query processing
+            if (pq == null) {
+                pq = new MyPriorityQueue(initialCapacity, new PriorityQueueComparator());
+            } else {
+                pq.clear();
+            }
+        }
         for (String subQuery : orSplit) {     // all subquery are without +
             Posting[] subResult = null;
 
@@ -47,7 +65,19 @@ public class QueryProcessor {
                     } else {
                         processToken = processToken(token);
                     }
-                    subResult = ArrayUtility.and(subResult, processToken);
+                    if (mode) {
+                        subResult = ArrayUtility.and(subResult, processToken);
+                    } else if (processToken != null) {
+                        double N = index.getNumberOfDocuments();
+                        double dft = processToken.length;
+                        double wqt = (dft == 0) ? 0 : Math.log(1 + (N / dft));
+                        for (Posting p : processToken) {
+                            if (p != null) {
+                                p.calculateAd(wqt, index.getWeight(p.getDocID()));
+                                pq.offer(p);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -62,11 +92,32 @@ public class QueryProcessor {
                 } else {
                     processToken = processToken(token);
                 }
-                subResult = ArrayUtility.remove(subResult, processToken);
+                if (mode) {
+                    subResult = ArrayUtility.remove(subResult, processToken);
+                } else {    // remove all postings in processToken from pq whose docId match
+                    Posting[] toArray = pq.toArray(new Posting[pq.size()]);
+                    toArray = ArrayUtility.remove(toArray, processToken);
+                    pq.clear();
+                    for (Posting p : toArray) {
+                        pq.offer(p);
+                    }
+                }
             }
 
             // add to final result
-            result = ArrayUtility.or(result, subResult);
+            if (mode) {
+                result = ArrayUtility.or(result, subResult);
+            }
+        }
+
+        // make result return top K elements from queue
+        if (!mode) {
+            result = new Posting[Math.min(initialCapacity, pq.size())];
+            int size = Math.min(initialCapacity, pq.size());
+//            ret = new int[size];
+            for (int i = 0; i < size; i++) {
+                result[i] = pq.poll();
+            }
         }
         return result;
     }
@@ -173,9 +224,6 @@ public class QueryProcessor {
                     break;
                 }
             }
-//            if (count == tokens.length) {
-//                ret.add(new Posting(docId));
-//            }
         }
         return ret.toArray(new Posting[ret.size()]);
     }
@@ -210,34 +258,4 @@ public class QueryProcessor {
         }
         return result;
     }
-
-    private long[] arrayAND(long[] list1, long[] list2, int nearK) {
-        if (list1 == null) {
-            return list2;
-        } else if (list2 == null) {
-            return list1;
-        }
-        TreeSet<Long> result = new TreeSet<>();
-        for (int i = 0, j = 0; i < list1.length && j < list2.length;) {
-            long compare_value = list1[i] - list2[j];
-            if (compare_value >= 0 & compare_value <= nearK) {   // add Posting to result
-                result.add(list1[i]);
-                result.add(list2[j]);
-                i++;
-                j++;
-            } else if (compare_value > nearK) {   // list1.pos > list2.pos + nearK
-                j++;
-            } else if (compare_value < 0) {     // list1.pos < list2.pos
-                i++;
-            }
-        }
-        long[] ret = new long[result.size()];
-        int i = 0;
-        for (Long l : result) {
-            ret[i] = l;
-            i++;
-        }
-        return ret;
-    }
-
 }

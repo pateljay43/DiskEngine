@@ -128,17 +128,22 @@ public class IndexWriter {
                 int lastDocId = 0;
                 Set<Integer> docIds = postings.keySet();
                 for (int docId : docIds) {
-//                    byte[] docIdBytes = ByteBuffer.allocate(4)
-//                            .putInt(docId - lastDocId).array(); // encode a gap, not a doc ID
+                    // write encoded docId as gap
                     byte[] docIdBytes = VariableByteEncoding.encodeNumber(docId - lastDocId);
                     postingsFile.write(docIdBytes, 0, docIdBytes.length);
                     lastDocId = docId;
 
+                    // list of positions
                     List<Integer> positionalList = postings.get(docId);
+                    int tf = positionalList.size();
 
-//                    byte[] termFreqBytes = ByteBuffer.allocate(4)
-//                            .putInt(positionalList.size()).array();
-                    byte[] termFreqBytes = VariableByteEncoding.encodeNumber(positionalList.size());
+                    // write wdt = 1 + log(tf)
+                    byte[] wdt = ByteBuffer.allocate(8).putDouble(1
+                            + ((tf == 0) ? 0 : Math.log(tf))).array();
+                    postingsFile.write(wdt, 0, wdt.length);
+
+                    // write encoded term-frequency
+                    byte[] termFreqBytes = VariableByteEncoding.encodeNumber(tf);
                     postingsFile.write(termFreqBytes, 0, termFreqBytes.length);
 
                     int lastPos = 0;
@@ -253,14 +258,8 @@ public class IndexWriter {
         try {
             SimpleTokenStream stream = new SimpleTokenStream(fileName);
             int position = 0;
-            HashMap<String, Double> term_tf = new HashMap<>();
+            HashMap<String, Double> term_freq = new HashMap<>();
             while (stream.hasNextToken()) {
-//                String term = stream.nextToken();
-//                String stemmed = porterStemmer.processToken(term);
-//
-//                if (stemmed != null && stemmed.length() > 0) {
-//                    index.addTerm(stemmed, documentID, position);
-//                }
                 String term = stream.nextToken();
                 if (term.contains("-")) { // process term with '-'
                     // for ab-xy -> store (abxy, ab, xy) all three
@@ -277,15 +276,15 @@ public class IndexWriter {
                 } else {
                     index.addTerm(porterStemmer.processToken(term), documentID, position);
                 }
-                term_tf.put(term, (term_tf.getOrDefault(term, 0.0) + 1));
+                term_freq.put(term, (term_freq.getOrDefault(term, 0.0) + 1));
                 position++;
             }
-            Collection<Double> tfs = term_tf.values();
-            Double sum = 0.0;
+            Collection<Double> tfs = term_freq.values();
+            Double sum_wdt = 0.0;
             for (Double tf : tfs) {
-                sum = sum + Math.pow((1 + Math.log(tf)), 2);
+                sum_wdt = sum_wdt + Math.pow((1 + ((tf == 0) ? 0 : Math.log(tf))), 2);
             }
-            double Ld = Math.sqrt(sum);
+            double Ld = Math.sqrt(sum_wdt);
             docWeightFile = new FileOutputStream(
                     new File(mFolderPath, "docWeights.bin"),
                     true

@@ -14,6 +14,37 @@ public class Posting {
     private long[] positions;
     private int docID;
     private int tf; // term frequency
+    private double wdt;
+
+    public double getWdt() {
+        return wdt;
+    }
+
+    public void setWdt(double wdt) {
+        this.wdt = wdt;
+    }
+    private double Ad;
+
+    public double getAd() {
+        return Ad;
+    }
+
+    public void setAd(double Ad) {
+        this.Ad = Ad;
+    }
+
+    /**
+     * calculate Ad = (wqt * wdt) / Ld;
+     *
+     * @param wqt
+     * @param Ld
+     */
+    public void calculateAd(double wqt, double Ld) {
+        Ad = (wqt * wdt);
+        if (Ad != 0) {
+            Ad = Ad / Ld;
+        }
+    }
 
     public Posting() {
     }

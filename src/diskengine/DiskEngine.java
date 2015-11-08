@@ -17,9 +17,9 @@ public class DiskEngine {
         switch (menuChoice) {
             case 1: {
                 System.out.println("Enter the name of a directory to index: ");
-                System.out.println("/Users/JAY/Desktop/529 - SET/project/MobyDick10Chapters");
+                System.out.println("/Users/JAY/Desktop/529 - SET/Home works contents/MobyDickChapters");
 //                String folder = scan.nextLine();
-                String folder = "/Users/JAY/Desktop/529 - SET/project/MobyDick10Chapters";
+                String folder = "/Users/JAY/Desktop/529 - SET/Home works contents/MobyDickChapters";
 
                 IndexWriter writer = new IndexWriter(folder);
                 writer.buildIndex();
@@ -27,13 +27,18 @@ public class DiskEngine {
             }
             case 2: {
                 System.out.println("Enter the name of an index to read:");
-                System.out.println("/Users/JAY/Desktop/529 - SET/project/MobyDick10Chapters");
+                System.out.println("/Users/JAY/Desktop/529 - SET/Home works contents/MobyDickChapters");
 //                String indexName = scan.nextLine();
-                String indexPath = "/Users/JAY/Desktop/529 - SET/project/MobyDick10Chapters";
+                String indexPath = "/Users/JAY/Desktop/529 - SET/Home works contents/MobyDickChapters";
+
+                System.out.println("Select mode of operation:");
+                System.out.println("1) Boolean mode");
+                System.out.println("2) Ranked mode\n");
+//                boolean mode = (scan.nextInt() == 1);
 
 //                DiskInvertedIndex index = new DiskInvertedIndex(indexName);
                 DiskPositionalIndex index = new DiskPositionalIndex(indexPath);
-                QueryProcessor queryProcessor2 = new QueryProcessor(index);
+                QueryProcessor queryProcessor = new QueryProcessor(index);
 
                 while (true) {
                     System.out.println("Enter one or more search terms, separated "
@@ -44,18 +49,20 @@ public class DiskEngine {
                         break;
                     }
 
-                    Posting[] postingsList = queryProcessor2.processQuery(input);
-                            
+//                    Posting[] postingsList = queryProcessor.processQuery(input, mode);
+                    Posting[] postingsList = queryProcessor.processQuery(input, false, 10);
+
                     if (postingsList == null || postingsList.length == 0) {
-                        System.out.println("Term not found");
+                        System.out.print("Term not found");
                     } else {
-                        System.out.print("Docs: ");
-                        for (Posting post : postingsList) {
+                        System.out.println("Docs: ");
+                        for (Posting posting : postingsList) {
 //                            System.out.print(index.getFileNames().get(post.getDocID())
 //                                    + ":"
 //                                    + index.getWeight(post.getDocID())
 //                                    + " ");
-                            System.out.print(index.getFileNames().get(post.getDocID()) + " ");
+                            System.out.println(index.getFileNames().get(posting.getDocID()) + ": "
+                                    + posting.getAd());
                         }
                     }
                     System.out.println();

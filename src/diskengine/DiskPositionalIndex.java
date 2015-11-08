@@ -27,7 +27,6 @@ import java.util.logging.Logger;
  */
 public class DiskPositionalIndex {
 
-    private String mPath;
     private RandomAccessFile mVocabList;
     private RandomAccessFile mPostings;
     private RandomAccessFile mDocWeights;
@@ -36,7 +35,6 @@ public class DiskPositionalIndex {
 
     public DiskPositionalIndex(String path) {
         try {
-            mPath = path;
             mVocabList = new RandomAccessFile(new File(path, "vocab.bin"), "r");
             mPostings = new RandomAccessFile(new File(path, "postings.bin"), "r");
             mDocWeights = new RandomAccessFile(new File(path, "docWeights.bin"), "r");
@@ -75,6 +73,7 @@ public class DiskPositionalIndex {
             //    the gap and put it in the array.
             //
             // repeat until all postings are read.
+            buffer = new byte[8];   // for wdt (double)
             int lastDocId = 0;
             for (int i = 0; i < documentFrequency; i++) {
                 postingsArray[i] = new Posting();
@@ -94,6 +93,11 @@ public class DiskPositionalIndex {
                 int docId = lastDocId + gap;
                 postingsArray[i].setDocID(docId);
                 lastDocId = docId;
+
+                // read wdt
+                postings.read(buffer, 0, buffer.length);
+                double wdt = ByteBuffer.wrap(buffer).getDouble();
+                postingsArray[i].setWdt(wdt);
 
                 // read term frequency of document
                 b = postings.readByte();
@@ -277,6 +281,10 @@ public class DiskPositionalIndex {
 
     public List<String> getFileNames() {
         return mFileNames;
+    }
+
+    public int getNumberOfDocuments() {
+        return mFileNames.size();
     }
 
     public int getTermCount() {
