@@ -1,0 +1,248 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package diskengine;
+
+import static diskengine.ArrayUtility.compare_Id;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.TreeSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Scanner;
+import java.util.TreeSet;
+import java.util.TreeSet;
+
+/**
+ *
+ * @author JAY
+ */
+public class QueryProcessor {
+
+    private static DiskPositionalIndex index;
+    private static PorterStemmer porterstemmer;
+    private static QueryStreamer queryStreamer;
+
+    public QueryProcessor(DiskPositionalIndex _index) {
+        index = _index;
+        porterstemmer = new PorterStemmer();
+        queryStreamer = new QueryStreamer();
+    }
+
+    public Posting[] processQuery(String query) {
+        query = query.replaceAll("[^A-Za-z0-9-+)(/ \"]", "")
+                .replaceAll("(( )( )+)", " ")
+                .trim();
+        String[] orSplit = query.split("\\+");
+        Posting[] result = null;
+        for (String subQuery : orSplit) {     // all subquery are without +
+            Posting[] subResult = null;
+
+            // generate subresult for subQuery
+            queryStreamer.setQuery(subQuery);
+            while (queryStreamer.hasNextToken()) {
+                String token = queryStreamer.nextToken();
+                if (token != null) {
+                    Posting[] processToken = null;
+                    if (token.contains("\"")) {   // token is positive phrase
+                        processToken = processPhrase(token);
+                    } else {
+                        processToken = processToken(token);
+                    }
+                    subResult = ArrayUtility.and(subResult, processToken);
+                }
+            }
+
+            // process not-tokens in subQuery
+            // (tokens can be single terms or phrase, both are negative)
+            String[] notTokens = queryStreamer.getNotTokens();
+            for (String token : notTokens) {
+                Posting[] processToken;
+                token = token.substring(1, token.length()); // remove '-'
+                if (token.contains("\"")) {   // token is positive phrase
+                    processToken = processPhrase(token);
+                } else {
+                    processToken = processToken(token);
+                }
+                subResult = ArrayUtility.remove(subResult, processToken);
+            }
+
+            // add to final result
+            result = ArrayUtility.or(result, subResult);
+        }
+        return result;
+    }
+
+    /**
+     * Search index for token. Token can be positive or negative single term
+     *
+     * @param token Query literal
+     * @return Postings for given token
+     */
+    private Posting[] processToken(String token) {
+        Posting[] postings = index.getPostings(
+                porterstemmer.processToken(token.toLowerCase()), false);
+        return postings;
+    }
+
+    /**
+     * Search index for phrase. Phrase can be positive or negative
+     *
+     * @param query Phrase Query
+     * @return DocIds for given phrase query
+     */
+    private Posting[] processPhrase(String query) {
+        int nearK = 1;
+        if (query.contains("NEAR/")) {
+            Scanner scanner = new Scanner(query);
+            query = "";
+            while (scanner.hasNext()) {
+                String next = scanner.next();
+                if (next.contains("NEAR/")) {
+                    // skip
+                    nearK = Integer.parseInt(next.substring(next.indexOf("/") + 1));
+                } else {
+                    query = query + " " + next;
+                }
+            }
+            query = query.trim();
+        }
+        HashMap<Integer, TreeSet<Long>> result = new HashMap<>();
+        query = query.substring(1, query.length() - 1);     // remove quotes
+        String[] tokens = query.split(" ");
+        if (tokens.length > 1) {        // more than one token in phrase
+            int i = 0;
+            // get Postings for token1
+            Posting[] postings1 = index
+                    .getPostings(porterstemmer.processToken(tokens[i].toLowerCase()), true);
+            // get Postings for remaining tokens as token2, at the en make token1 = token2
+            for (i = 1; i < tokens.length; i++) {
+                // token2's postings
+                Posting[] postings2 = index
+                        .getPostings(porterstemmer.processToken(tokens[i].toLowerCase()), true);
+
+                // go through all postings of token1 and token2
+                for (int j = 0, k = 0; j < postings1.length && k < postings2.length;) {
+                    // compare posting1.id to posting2.id
+                    int compare_value = postings1[j].getDocID() - postings2[k].getDocID();
+                    if (compare_value == 0) {       // same docId
+                        TreeSet<Long> search = matchPostings(postings1[j],
+                                postings2[k],
+                                nearK);
+                        TreeSet<Long> postings = result
+                                .getOrDefault(postings1[j].getDocID(), new TreeSet<>());
+                        postings.addAll(search);
+
+                        result.put(postings1[j].getDocID(), postings);
+                        j++;
+                        k++;
+                    } else if (compare_value > 0) {    // postings1[j].id > postings2[k].id
+                        k++;
+                    } else if (compare_value < 0) {   // postings1[j].id < postings2[k].id
+                        j++;
+                    }
+                }
+                postings1 = postings2;
+            }
+        } else if (tokens.length == 1) {  // only one token in phrase
+            return index.getPostings(porterstemmer.processToken(tokens[0].toLowerCase()), true);
+        } else {  // no token
+            return null;
+        }
+        Iterator<Integer> iterator = result.keySet().iterator();
+        ArrayList<Posting> ret = new ArrayList<>(result.size());
+        while (iterator.hasNext()) {
+            Integer docId = iterator.next();
+            Iterator<Long> positions = result.get(docId).iterator();
+            Long last = null;
+            int count = 0;
+            while (positions.hasNext()) {
+                Long next = positions.next();
+                if (last == null) {
+                    last = next;
+                    count++;
+                } else {
+                    long diff = next - last;
+                    if (diff >= 0 && diff <= nearK) {
+                        count++;
+                    } else {
+                        count = 1;
+                    }
+                    last = next;
+                }
+                if (count == tokens.length) {
+                    ret.add(new Posting(docId));
+                    break;
+                }
+            }
+//            if (count == tokens.length) {
+//                ret.add(new Posting(docId));
+//            }
+        }
+        return ret.toArray(new Posting[ret.size()]);
+    }
+
+    /**
+     * Search positions where token1 and token2 are atmost nearK distance away
+     *
+     * @param token1
+     * @param token2
+     * @return
+     */
+    private TreeSet<Long> matchPostings(Posting token1, Posting token2, int nearK) {
+        TreeSet<Long> result = new TreeSet<>();
+        long[] term1_posList = token1.getPositions();
+        long[] term2_posList = token2.getPositions();
+        if (term1_posList.length > 0 && term2_posList.length > 0) {
+            int i = 0, j = 0;
+            for (; i < term1_posList.length && j < term2_posList.length;) {
+                Long p1 = term1_posList[i];
+                Long p2 = term2_posList[j];
+                if (p2 - p1 >= 0 && p2 - p1 <= nearK) {
+                    result.add(p1);
+                    result.add(p2);
+                    i++;
+                    j++;
+                } else if (p1 < p2) {
+                    i++;
+                } else if (p1 > p2) {
+                    j++;
+                }
+            }
+        }
+        return result;
+    }
+
+    private long[] arrayAND(long[] list1, long[] list2, int nearK) {
+        if (list1 == null) {
+            return list2;
+        } else if (list2 == null) {
+            return list1;
+        }
+        TreeSet<Long> result = new TreeSet<>();
+        for (int i = 0, j = 0; i < list1.length && j < list2.length;) {
+            long compare_value = list1[i] - list2[j];
+            if (compare_value >= 0 & compare_value <= nearK) {   // add Posting to result
+                result.add(list1[i]);
+                result.add(list2[j]);
+                i++;
+                j++;
+            } else if (compare_value > nearK) {   // list1.pos > list2.pos + nearK
+                j++;
+            } else if (compare_value < 0) {     // list1.pos < list2.pos
+                i++;
+            }
+        }
+        long[] ret = new long[result.size()];
+        int i = 0;
+        for (Long l : result) {
+            ret[i] = l;
+            i++;
+        }
+        return ret;
+    }
+
+}
