@@ -5,7 +5,6 @@ import java.util.Scanner;
 public class DiskEngine {
 
     public static void main(String[] args) {
-        PorterStemmer porterStemmer = new PorterStemmer();
         Scanner scan = new Scanner(System.in);
 
         System.out.println("Menu:");
