@@ -5,15 +5,10 @@
  */
 package diskengine;
 
-import static diskengine.ArrayUtility.compare_Id;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.TreeSet;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
 import java.util.Scanner;
-import java.util.TreeSet;
 import java.util.TreeSet;
 
 /**
