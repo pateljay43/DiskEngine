@@ -73,7 +73,11 @@ public class QueryProcessor {
                 if (token != null) {
                     Posting[] processToken = null;
                     if (token.contains("\"")) {   // token is positive phrase
-                        processToken = processPhrase(token);
+                        if (mode) {
+                            processToken = processPhrase(token);
+                        } else {
+                            return null;
+                        }
                     } else {
                         processToken = processToken(token);
                     }

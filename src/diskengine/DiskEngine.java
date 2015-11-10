@@ -80,10 +80,18 @@ public class DiskEngine {
                         System.out.print("Term not found");
                     } else {
                         System.out.println("Docs: ");
-                        for (Posting posting : postingsList) {
-                            System.out.println(index.getFileNames().get(posting.getDocID()) + ": "
-                                    + posting.getAd());
+                        if (mode) {
+                            for (Posting posting : postingsList) {
+                                System.out.print(index.getFileNames().get(posting.getDocID()) + " ");
+                            }
+                            System.out.println("");
+                        } else {
+                            for (Posting posting : postingsList) {
+                                System.out.println(index.getFileNames().get(posting.getDocID()) + ": "
+                                        + posting.getAd());
+                            }
                         }
+
                     }
                     System.out.println();
                     System.out.println();
