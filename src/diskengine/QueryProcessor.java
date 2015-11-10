@@ -30,6 +30,18 @@ public class QueryProcessor {
     }
 
     /**
+     * process the query and returns the result from the disk index. For ranked
+     * mode, default return value is 10
+     *
+     * @param query query to be processed
+     * @param mode mode to process query (true = boolean, false = ranked)
+     * @return query result containing the Postings
+     */
+    public Posting[] processQuery(String query, boolean mode) {
+        return this.processQuery(query, mode, 10);
+    }
+
+    /**
      * process the query and returns the result from the disk index
      *
      * @param query query to be processed
@@ -46,7 +58,7 @@ public class QueryProcessor {
 
         if (!mode) {    // init priorityqueue only in ranked query processing
             if (pq == null) {
-                pq = new MyPriorityQueue(initialCapacity, new PriorityQueueComparator());
+                pq = new MyPriorityQueue(initialCapacity, new PriorityQueueComparator(false));
             } else {
                 pq.clear();
             }
@@ -67,13 +79,14 @@ public class QueryProcessor {
                     }
                     if (mode) {
                         subResult = ArrayUtility.and(subResult, processToken);
-                    } else if (processToken != null) {
-                        double N = index.getNumberOfDocuments();
-                        double dft = processToken.length;
-                        double wqt = (dft == 0) ? 0 : Math.log(1 + (N / dft));
+                    } else if (processToken != null && processToken.length > 0) {
+                        int N = index.getNumberOfDocuments();
+                        int dft = processToken.length;
                         for (Posting p : processToken) {
                             if (p != null) {
-                                p.calculateAd(wqt, index.getWeight(p.getDocID()));
+                                p.calculateWqt(N, dft);
+                                p.calculateAd();
+                                p.finalizeAd();
                                 pq.offer(p);
                             }
                         }
@@ -83,40 +96,32 @@ public class QueryProcessor {
 
             // process not-tokens in subQuery
             // (tokens can be single terms or phrase, both are negative)
-            String[] notTokens = queryStreamer.getNotTokens();
-            for (String token : notTokens) {
-                Posting[] processToken;
-                token = token.substring(1, token.length()); // remove '-'
-                if (token.contains("\"")) {   // token is positive phrase
-                    processToken = processPhrase(token);
-                } else {
-                    processToken = processToken(token);
-                }
-                if (mode) {
-                    subResult = ArrayUtility.remove(subResult, processToken);
-                } else {    // remove all postings in processToken from pq whose docId match
-                    Posting[] toArray = pq.toArray(new Posting[pq.size()]);
-                    toArray = ArrayUtility.remove(toArray, processToken);
-                    pq.clear();
-                    for (Posting p : toArray) {
-                        pq.offer(p);
+            if (mode) {         // perform not operator only for boolean queries
+                String[] notTokens = queryStreamer.getNotTokens();
+                for (String token : notTokens) {
+                    Posting[] processToken;
+                    token = token.substring(1, token.length()); // remove '-'
+                    if (token.contains("\"")) {   // token is positive phrase
+                        processToken = processPhrase(token);
+                    } else {
+                        processToken = processToken(token);
                     }
+                    subResult = ArrayUtility.remove(subResult, processToken);
                 }
-            }
 
-            // add to final result
-            if (mode) {
+                // add to final result
                 result = ArrayUtility.or(result, subResult);
             }
         }
 
-        // make result return top K elements from queue
+        // make result return top K elements from queue for ranked query mode
         if (!mode) {
-            result = new Posting[Math.min(initialCapacity, pq.size())];
             int size = Math.min(initialCapacity, pq.size());
-//            ret = new int[size];
+            result = new Posting[size];
             for (int i = 0; i < size; i++) {
-                result[i] = pq.poll();
+                Posting posting = pq.poll();
+//                posting.finalizeAd();
+                result[i] = posting;
             }
         }
         return result;

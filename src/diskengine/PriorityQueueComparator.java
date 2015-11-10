@@ -13,12 +13,22 @@ import java.util.Comparator;
  */
 public class PriorityQueueComparator implements Comparator<Posting> {
 
-    PriorityQueueComparator() {
+    private static int above;
+    private static int below;
+
+    /**
+     * arrange the collection in given order
+     *
+     * @param order true - ascending; false - descending
+     */
+    public PriorityQueueComparator(boolean order) {
+        above = order ? -1 : 1;
+        below = order ? 1 : -1;
     }
 
     @Override
     public int compare(Posting o1, Posting o2) {
-        return (o2.getAd() - o1.getAd()) > 0 ? 1 : -1;  // decreasing order
+        return (o2.getAd() - o1.getAd()) >= 0 ? above : below;
     }
 
 }

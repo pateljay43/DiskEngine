@@ -7,31 +7,28 @@ package diskengine;
 
 import static java.lang.Math.log;
 
-/**
- *
- * @author Hamot
- */
-public class DefaultScheme implements WeightScheme {
+public final class DefaultScheme extends WeightScheme {
 
-    private double docWeights;
+    private final double docWeight;
 
-    public DefaultScheme(double mDocWeight) {
-        this.docWeights = mDocWeight;
+    public DefaultScheme(double _docWeight, double _tf) {
+        docWeight = _docWeight;
+        this.calcWdt(_tf);
+        this.calcLd();
     }
 
     @Override
-    public double calcWqt(long N, long dft) {
-        return (dft == 0) ? 0 : log(1 + N / dft);
+    public void calcWqt(double N, double dft) {
+        wqt = log(1.0 + N / dft);
     }
 
     @Override
-    public double calcWdt(long tfd) {
-        return (tfd == 0) ? 1 : 1 + log(tfd);
+    public void calcWdt(double tftd) {
+        wdt = 1.0 + log(tftd);
     }
 
     @Override
-    public double calcLd() {
-        return docWeights;
+    public void calcLd() {
+        Ld = docWeight;
     }
-
 }

@@ -135,14 +135,8 @@ public class IndexWriter {
 
                     // list of positions
                     List<Integer> positionalList = postings.get(docId);
-                    int tf = positionalList.size();
-
-                    // write wdt = 1 + log(tf)
-                    byte[] wdt = ByteBuffer.allocate(8).putDouble(1
-                            + ((tf == 0) ? 0 : Math.log(tf))).array();
-                    postingsFile.write(wdt, 0, wdt.length);
-
                     // write encoded term-frequency
+                    int tf = positionalList.size();
                     byte[] termFreqBytes = VariableByteEncoding.encodeNumber(tf);
                     postingsFile.write(termFreqBytes, 0, termFreqBytes.length);
 
@@ -206,12 +200,13 @@ public class IndexWriter {
         }
     }
 
+    private static int mDocumentID = 0;
+
     private void indexFiles(String folder, final PositionalInvertedIndex index) {
         final Path currentWorkingPath = Paths.get(folder).toAbsolutePath();
 
         try {
             Files.walkFileTree(currentWorkingPath, new SimpleFileVisitor<Path>() {
-                int mDocumentID = 0;
 
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir,
@@ -247,9 +242,30 @@ public class IndexWriter {
                 }
 
             });
+
+            // write average Ld;
+            double Ld_sum = 0.0;
+            try (RandomAccessFile mDocWeights = new RandomAccessFile(
+                    new File(folder, "docWeights.bin"), "r")) {
+                byte[] buffer = new byte[24];
+                for (int i = 0; i < mDocumentID; i++) {
+                    mDocWeights.read(buffer, 0, buffer.length);
+                    Ld_sum = Ld_sum + ByteBuffer.wrap(buffer, 0, 8).getDouble();
+                }
+            }
+            try (FileOutputStream docWeightFile = new FileOutputStream(
+                    new File(mFolderPath, "docWeights.bin"),
+                    true
+            )) {
+                double avgLd = Ld_sum / mDocumentID;
+                byte[] LdBytes = ByteBuffer.allocate(8)
+                        .putDouble(avgLd).array();
+                docWeightFile.write(LdBytes, 0, LdBytes.length);
+            }
         } catch (IOException ex) {
             Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
         }
+
     }
 
     private void indexFile(File fileName, PositionalInvertedIndex index,
@@ -258,14 +274,15 @@ public class IndexWriter {
         try {
             SimpleTokenStream stream = new SimpleTokenStream(fileName);
             int position = 0;
-            HashMap<String, Double> term_freq = new HashMap<>();
+            Set<String> terms = new HashSet<>();
             while (stream.hasNextToken()) {
                 String term = stream.nextToken();
+                String t = "";
                 if (term.contains("-")) { // process term with '-'
                     // for ab-xy -> store (abxy, ab, xy) all three
                     // all with same position
-                    index.addTerm(porterStemmer.processToken(term.replaceAll("-", "")),
-                            documentID, position);
+                    t = porterStemmer.processToken(term.replaceAll("-", ""));
+                    index.addTerm(t, documentID, position);
                     String[] subtokens = term.split("-");
                     for (String subtoken : subtokens) {
                         if (subtoken.length() > 0) {
@@ -274,17 +291,24 @@ public class IndexWriter {
                         }
                     }
                 } else {
-                    index.addTerm(porterStemmer.processToken(term), documentID, position);
+                    t = porterStemmer.processToken(term);
+                    index.addTerm(t, documentID, position);
                 }
-                term_freq.put(term, (term_freq.getOrDefault(term, 0.0) + 1));
+                terms.add(t);
                 position++;
             }
-            Collection<Double> tfs = term_freq.values();
-            Double sum_wdt = 0.0;
-            for (Double tf : tfs) {
-                sum_wdt = sum_wdt + Math.pow((1 + ((tf == 0) ? 0 : Math.log(tf))), 2);
+
+            // add all tf for terms in this document
+            double sumOfWdt_2 = 0.0;
+            long sum_tf = 0;
+            for (String term : terms) {
+                int tf = index.getPositionalList(term, documentID).size();
+                sum_tf = sum_tf + tf;
+                sumOfWdt_2 = sumOfWdt_2 + Math.pow((1 + ((tf == 0) ? 0 : Math.log(tf))), 2);
             }
-            double Ld = Math.sqrt(sum_wdt);
+
+            // write Ld
+            double Ld = (sumOfWdt_2 == 0.0) ? 0.0 : Math.sqrt(sumOfWdt_2);
             docWeightFile = new FileOutputStream(
                     new File(mFolderPath, "docWeights.bin"),
                     true
@@ -292,11 +316,24 @@ public class IndexWriter {
             byte[] LdBytes = ByteBuffer.allocate(8)
                     .putDouble(Ld).array();
             docWeightFile.write(LdBytes, 0, LdBytes.length);
+
+            // write byteSize
+            byte[] byteSize = ByteBuffer.allocate(8)
+                    .putDouble(fileName.length()).array();
+            docWeightFile.write(byteSize, 0, byteSize.length);
+
+            // write avg(tf) for this document
+            double numOfTerms = terms.size();
+            byte[] avgTf = ByteBuffer.allocate(8)
+                    .putDouble(sum_tf / numOfTerms).array();
+            docWeightFile.write(avgTf, 0, avgTf.length);
         } catch (Exception ex) {
             System.out.println(ex.toString());
         } finally {
             try {
-                docWeightFile.close();
+                if (docWeightFile != null) {
+                    docWeightFile.close();
+                }
             } catch (IOException ex) {
                 Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
             }

@@ -27,7 +27,7 @@ public class PositionalInvertedIndex {
     private double avgDocPerTerm;
     private final DecimalFormat df2;
 
-    private int intestWord;
+    private int largestWord;
 
     // Variables for statistics
     private int totalDocumentsFrequency;
@@ -40,7 +40,7 @@ public class PositionalInvertedIndex {
      */
     public PositionalInvertedIndex() {
         mIndex = new HashMap<>();
-        intestWord = 0;
+        largestWord = 0;
         df2 = new DecimalFormat("#.##");
     }
 
@@ -61,7 +61,7 @@ public class PositionalInvertedIndex {
             postings.put(documentID, positionalList);
             mIndex.put(term, postings);
         }
-        intestWord = Math.max(intestWord, term.length());
+        largestWord = Math.max(largestWord, term.length());
     }
 
     /**
@@ -111,8 +111,8 @@ public class PositionalInvertedIndex {
      *
      * @return length of largest term in dictionary
      */
-    public int getIntegerestWordLength() {
-        return intestWord;
+    public int getLargestWordLength() {
+        return largestWord;
     }
 
     /**
@@ -213,4 +213,5 @@ public class PositionalInvertedIndex {
     public void setNumOfDocuments(int numOfDocuments) {
         this.numOfDocuments = numOfDocuments;
     }
+
 }

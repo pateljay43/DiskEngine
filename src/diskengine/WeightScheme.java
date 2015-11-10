@@ -7,19 +7,18 @@ package diskengine;
 
 /**
  *
- * @author Hamot
+ * @author Jay
  */
-public interface WeightScheme {
+abstract class WeightScheme {
+
+    protected double wqt;
+    protected double wdt;
+    protected double Ld;
+
+    public abstract void calcWqt(double N, double dft);
+
+    public abstract void calcWdt(double tftd);
+
+    public abstract void calcLd();
     
-    /**
-     *
-     * @param N
-     * @param dft
-     * @return
-     */
-    public double calcWqt(long N, long dft);
-    
-    public double calcWdt(long tfd);
-   
-    public double calcLd();
 }

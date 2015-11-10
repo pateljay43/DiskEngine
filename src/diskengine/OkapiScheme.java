@@ -7,33 +7,33 @@ package diskengine;
 
 import static java.lang.Math.log;
 
-/**
- *
- * @author Hamot
- */
-public class OkapiScheme implements WeightScheme {
+public final class OkapiScheme extends WeightScheme {
 
-    double Kd;
+    private final double Kd;
 
-    public OkapiScheme(double docWD, double docWA) {
-        this.Kd = 1.2 * (0.25 + 0.75 * (docWD / docWA));
+    public OkapiScheme(double docWD, double docWA, double _tf) {
+        this.Kd = 1.2 * (0.25 + 0.75 * ((docWA == 0.0) ? 0.0 : (docWD / docWA)));
+        this.calcWdt(_tf);
+        this.calcLd();
     }
 
     @Override
-    public double calcWqt(long N, long dft) {
-        double n = (N - dft + 0.5);
-        double d = (dft + 0.5);
-        return (d == 0 || n == 0) ? 0 : log(n / d);
+    public void calcWqt(double N, double dft) {
+        double n = N - dft + 0.5;
+        double d = dft + 0.5;
+        wqt = (d == 0.0 || n == 0.0) ? 0.0 : log(n / d);
     }
 
     @Override
-    public double calcWdt(long tfd) {
-        return (2.2 * tfd) / (Kd + tfd);
+    public void calcWdt(double tftd) {
+        double n = (2.2 * tftd);
+        double d = (Kd + tftd);
+        wdt = (d == 0.0) ? 0 : (n / d);
     }
 
     @Override
-    public double calcLd() {
-        return 1;
+    public void calcLd() {
+        Ld = 1.0;
     }
 
     public double getKd() {

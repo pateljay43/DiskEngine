@@ -14,43 +14,54 @@ public class Posting {
     private long[] positions;
     private int docID;
     private int tf; // term frequency
-    private double wdt;
-
-    public double getWdt() {
-        return wdt;
-    }
-
-    public void setWdt(double wdt) {
-        this.wdt = wdt;
-    }
+    private WeightScheme scheme;
     private double Ad;
-
-    public double getAd() {
-        return Ad;
-    }
-
-    public void setAd(double Ad) {
-        this.Ad = Ad;
-    }
-
-    /**
-     * calculate Ad = (wqt * wdt) / Ld;
-     *
-     * @param wqt
-     * @param Ld
-     */
-    public void calculateAd(double wqt, double Ld) {
-        Ad = (wqt * wdt);
-        if (Ad != 0) {
-            Ad = Ad / Ld;
-        }
-    }
 
     public Posting() {
     }
 
     public Posting(int _docID) {
         docID = _docID;
+    }
+
+    /**
+     * @return the docID
+     */
+    public int getDocID() {
+        return docID;
+    }
+
+    /**
+     * @param docID the docID to set
+     */
+    public void setDocID(int docID) {
+        this.docID = docID;
+    }
+
+    /**
+     * @return the term frequency
+     */
+    public int getTf() {
+        return tf;
+    }
+
+    /**
+     * @param tf the term frequency to set
+     */
+    public void setTf(int tf) {
+        this.tf = tf;
+    }
+
+    public double getWdt() {
+        return scheme.wdt;
+    }
+
+    public void calculateWqt(int N, int dft) {
+        scheme.calcWqt(N, dft);
+    }
+
+    public double getWqt() {
+        return scheme.wqt;
     }
 
     public void initPositions() {
@@ -80,32 +91,40 @@ public class Posting {
         this.positions = positions;
     }
 
-    /**
-     * @return the docID
-     */
-    public int getDocID() {
-        return docID;
+    public double getAd() {
+        return Ad;
     }
 
-    /**
-     * @param docID the docID to set
-     */
-    public void setDocID(int docID) {
-        this.docID = docID;
+    public void setAd(double _Ad) {
+        Ad = _Ad;
     }
 
-    /**
-     * @return the tf
-     */
-    public int getTf() {
-        return tf;
+    public void calculateAd() {
+//        Ad = (scheme.wqt * scheme.wdt) / scheme.Ld;
+        Ad = (scheme.wqt * scheme.wdt);
     }
 
-    /**
-     * @param tf the tf to set
-     */
-    public void setTf(int tf) {
-        this.tf = tf;
+    public void finalizeAd() {
+        Ad = Ad / scheme.Ld;
     }
 
+    public void setScheme(double docWeight, double byteSize, double avgTf, double avgDocWeight) {
+        switch (DiskEngine.scheme) {
+            case 1:
+                scheme = new DefaultScheme(docWeight, tf);
+                break;
+            case 2:
+                scheme = new TraditionalScheme(docWeight, tf);
+                break;
+            case 3:
+                scheme = new OkapiScheme(docWeight, avgDocWeight, tf);
+                break;
+            case 4:
+                scheme = new WackyScheme(avgTf, byteSize, tf);
+                break;
+            default:
+                scheme = null;
+                break;
+        }
+    }
 }

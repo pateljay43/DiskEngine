@@ -73,8 +73,9 @@ public class DiskPositionalIndex {
             //    the gap and put it in the array.
             //
             // repeat until all postings are read.
-            buffer = new byte[8];   // for wdt (double)
+//            buffer = new byte[8];   // for wdt (double)
             int lastDocId = 0;
+            double averageWeight = getAverageWeight();
             for (int i = 0; i < documentFrequency; i++) {
                 postingsArray[i] = new Posting();
 
@@ -93,11 +94,6 @@ public class DiskPositionalIndex {
                 int docId = lastDocId + gap;
                 postingsArray[i].setDocID(docId);
                 lastDocId = docId;
-
-                // read wdt
-                postings.read(buffer, 0, buffer.length);
-                double wdt = ByteBuffer.wrap(buffer).getDouble();
-                postingsArray[i].setWdt(wdt);
 
                 // read term frequency of document
                 b = postings.readByte();
@@ -138,6 +134,11 @@ public class DiskPositionalIndex {
                         lastPosition = pos;
                     }
                 }
+
+                // set [Ld, byteSize, avg(tf)]
+                // calculate Ld and wdt
+                double[] weights = getWeight(docId);
+                postingsArray[i].setScheme(weights[0], weights[1], weights[2], averageWeight);
             }
             return postingsArray;
         } catch (IOException ex) {
@@ -265,13 +266,34 @@ public class DiskPositionalIndex {
         return null;
     }
 
-    public double getWeight(int docId) {
+    /**
+     * returns Ld, byteSize, avg(tf) stored in docWeights.bin
+     *
+     * @param docId id of document
+     * @return array containing [Ld, byteSize, avg(tf)]
+     */
+    private double[] getWeight(int docId) {
+        byte[] buffer = new byte[24];
+        try {   // skip all Ld, byteSize, avg(tf) for each document
+            mDocWeights.seek(docId * 24);
+            mDocWeights.read(buffer, 0, buffer.length);
+        } catch (IOException ex) {
+            Logger.getLogger(DiskPositionalIndex.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        double ld = ByteBuffer.wrap(buffer, 0, 8).getDouble();
+        double byteSize = ByteBuffer.wrap(buffer, 8, 8).getDouble();
+        double avg_tf = ByteBuffer.wrap(buffer, 16, 8).getDouble();
+        return new double[]{ld, byteSize, avg_tf};
+    }
+
+    /**
+     *
+     * @return Average weight of all document
+     */
+    public double getAverageWeight() {
         byte[] buffer = new byte[8];
-        try {
-            mDocWeights.seek(0);
-            for (int i = 0; i < docId; i++) {
-                mDocWeights.read(buffer, 0, buffer.length);
-            }
+        try {   // average is stored after all the Ld, byteSize, avg(tf) for each document
+            mDocWeights.seek(mFileNames.size() * 24);
             mDocWeights.read(buffer, 0, buffer.length);
         } catch (IOException ex) {
             Logger.getLogger(DiskPositionalIndex.class.getName()).log(Level.SEVERE, null, ex);
