@@ -31,6 +31,7 @@ public class DiskPositionalIndex {
     private RandomAccessFile mPostings;
     private RandomAccessFile mDocWeights;
     private long[] mVocabTable;
+    private Statistics statistics;
     private List<String> mFileNames;
 
     public DiskPositionalIndex(String path) {
@@ -40,6 +41,7 @@ public class DiskPositionalIndex {
             mDocWeights = new RandomAccessFile(new File(path, "docWeights.bin"), "r");
             mVocabTable = readVocabTable(path);
             mFileNames = readFileNames(path);
+            statistics = readStatistics(path);
         } catch (FileNotFoundException ex) {
             System.out.println(ex.toString());
         }
@@ -311,5 +313,50 @@ public class DiskPositionalIndex {
 
     public int getTermCount() {
         return mVocabTable.length / 2;
+    }
+
+    private Statistics readStatistics(String path) {
+        Statistics stat;
+        try (RandomAccessFile indexStat = new RandomAccessFile(new File(path, "vocab.bin"), "r");) {
+            stat = new Statistics();
+            // read term count
+            long termCount = indexStat.readLong();
+            stat.setTermCount(termCount);
+            // read number of type of terms
+            long numOfTypes = indexStat.readLong();
+            stat.setNumOfTypes(numOfTypes);
+            // read average number of documents per term
+            Double avg = indexStat.readDouble();
+            stat.setAvgDocPerTerm(avg);
+            // read total memory of all files used on secondary memory
+            long mem = indexStat.readLong();
+            stat.setTotalMemory(mem);
+            // read all the terms to file as [num of byte of term, term]
+            byte[] buffer;
+            for (int i = 0; i < termCount; i++) {
+                // number of bytes of this term
+                Double bytelength = indexStat.readDouble();
+                buffer = new byte[bytelength.intValue()];
+                // read term
+                indexStat.read(buffer, 0, buffer.length);
+                // add term to statistics
+                stat.addMostFreqTerm(new String(buffer));
+            }
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(DiskPositionalIndex.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
+        } catch (IOException ex) {
+            Logger.getLogger(DiskPositionalIndex.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
+        }
+        return stat;
+    }
+
+    public Statistics getStatistics() {
+        return statistics;
+    }
+
+    public String getFileName(int docId) {
+        return mFileNames.get(docId);
     }
 }

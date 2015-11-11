@@ -13,9 +13,6 @@ public class QuerySyntaxCheck {
 
     private String errorMessage = "valid";
 
-//    public QuerySyntaxCheck() {
-//        errorMessage = "valid";
-//    }
     // returns a success or error message for the parenthesization of the query
     public String checkParenthesis(String query) {
         boolean isParenthesis = true;
@@ -115,9 +112,44 @@ public class QuerySyntaxCheck {
         }
         return errorMessage;
     }
+    
+    // check if near operator used properly or not used at all
+    public String checkNearOperator(String query) {
+        errorMessage = "valid";
+        String s = "NEAR/";
+        if (query == null) {
+            return errorMessage;
+        } else {
+            if (query.contains(s)) {
+                int index = query.indexOf(s);
+                if (index<=1 || query.length() < index + 8) {
+                    errorMessage = "Invalid usage of NEAR operator!";
+                    return errorMessage;
+                }
+                char c = query.charAt(index + 5);
+                if ((c < '0' || c > '9')) {
+                    errorMessage = "k should be a positive integer in NEAR operator!";
+                    return errorMessage;
+                }
+            }
+        }
+        return errorMessage;
+    }
 
     // true if query passed all three syntax checking conditions
-    public boolean isValidQuery(String query) {
+
+    /**
+     *
+     * @param query query to be checked.
+     * @param mode true for boolean, false for ranked.
+     * @return true if the query is valid; else false.
+     */
+    
+    public boolean isValidQuery(String query, boolean mode) {
+        String message0 = checkNearOperator(query);
+        if (!message0.equals("valid") && !mode) {
+            return false;
+        }
         String message1 = checkParenthesis(query);
         if (!message1.equals("valid")) {
             return false;

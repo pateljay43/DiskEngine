@@ -19,6 +19,8 @@ public class IndexWriter {
 
     private final String mFolderPath;
     private final PorterStemmer porterStemmer;
+    private final Set<String> termList;
+    private long totalDocFreq;
 
     /**
      * Constructs an IndexWriter object which is prepared to index the given
@@ -29,6 +31,8 @@ public class IndexWriter {
     public IndexWriter(String folderPath) {
         mFolderPath = folderPath;
         porterStemmer = new PorterStemmer();
+        termList = new HashSet<>();
+        totalDocFreq = 0;
     }
 
     /**
@@ -49,19 +53,12 @@ public class IndexWriter {
         PositionalInvertedIndex index = new PositionalInvertedIndex();
 
         // delete old "docWeights.bin" if already exists
-        try {
-            FileOutputStream docWeightFile = new FileOutputStream(
-                    new File(folder, "docWeights.bin")
-            );
-            docWeightFile.close();
-        } catch (FileNotFoundException ex) {
-            Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        createDocWeightsFile(folder);
 
         // Index the directory using a naive index
         indexFiles(folder, index);
+
+        
 
         // at this point, "index" contains the in-memory inverted index 
         // now we save the index to disk, building three files: the postings index,
@@ -75,6 +72,9 @@ public class IndexWriter {
 
         buildVocabFile(folder, dictionary, vocabPositions);
         buildPostingsFile(folder, index, dictionary, vocabPositions);
+        
+        // write index statistics to "indexStatistics.bin" file
+        writeIndexStatistics(index);
     }
 
     /**
@@ -270,29 +270,32 @@ public class IndexWriter {
 
     private void indexFile(File fileName, PositionalInvertedIndex index,
             int documentID) {
-        FileOutputStream docWeightFile = null;
-        try {
+        try (FileOutputStream docWeightFile = new FileOutputStream(new File(mFolderPath, "docWeights.bin"), true);) {
             SimpleTokenStream stream = new SimpleTokenStream(fileName);
             int position = 0;
             Set<String> terms = new HashSet<>();
             while (stream.hasNextToken()) {
                 String term = stream.nextToken();
+                termList.add(term);
                 String t = "";
                 if (term.contains("-")) { // process term with '-'
                     // for ab-xy -> store (abxy, ab, xy) all three
                     // all with same position
                     t = porterStemmer.processToken(term.replaceAll("-", ""));
                     index.addTerm(t, documentID, position);
+                    totalDocFreq++;
                     String[] subtokens = term.split("-");
                     for (String subtoken : subtokens) {
                         if (subtoken.length() > 0) {
                             index.addTerm(porterStemmer.processToken(subtoken),
                                     documentID, position);
+                            totalDocFreq++;
                         }
                     }
                 } else {
                     t = porterStemmer.processToken(term);
                     index.addTerm(t, documentID, position);
+                    totalDocFreq++;
                 }
                 terms.add(t);
                 position++;
@@ -309,10 +312,6 @@ public class IndexWriter {
 
             // write Ld
             double Ld = (sumOfWdt_2 == 0.0) ? 0.0 : Math.sqrt(sumOfWdt_2);
-            docWeightFile = new FileOutputStream(
-                    new File(mFolderPath, "docWeights.bin"),
-                    true
-            );
             byte[] LdBytes = ByteBuffer.allocate(8)
                     .putDouble(Ld).array();
             docWeightFile.write(LdBytes, 0, LdBytes.length);
@@ -329,14 +328,86 @@ public class IndexWriter {
             docWeightFile.write(avgTf, 0, avgTf.length);
         } catch (Exception ex) {
             System.out.println(ex.toString());
-        } finally {
-            try {
-                if (docWeightFile != null) {
-                    docWeightFile.close();
+        }
+    }
+
+    private void writeIndexStatistics(PositionalInvertedIndex index) {
+        try (FileOutputStream indexStatFile = new FileOutputStream(
+                new File(mFolderPath, "indexStatistics.bin"));) {
+
+            // write
+            // // term count
+            long numOfTerms = index.getTermCount();
+            byte[] buffer = ByteBuffer.allocate(8)
+                    .putLong(numOfTerms).array();
+            indexStatFile.write(buffer, 0, buffer.length);
+            // // number of type of terms
+            buffer = ByteBuffer.allocate(8)
+                    .putLong(termList.size()).array();
+            indexStatFile.write(buffer, 0, buffer.length);
+            // // average number of documents per term
+            buffer = ByteBuffer.allocate(8)
+                    .putDouble(totalDocFreq / index.getTermCount()).array();
+            indexStatFile.write(buffer, 0, buffer.length);
+            // // total memory of all files used on secondary memory
+            long totalSecondaryMemory = 0;
+            RandomAccessFile file = new RandomAccessFile(new File(mFolderPath, "vocab.bin"), "r");
+            totalSecondaryMemory += file.length();
+            file.close();
+            file = new RandomAccessFile(new File(mFolderPath, "postings.bin"), "r");
+            totalSecondaryMemory += file.length();
+            file.close();
+            file = new RandomAccessFile(new File(mFolderPath, "docWeights.bin"), "r");
+            totalSecondaryMemory += file.length();
+            file.close();
+            file = new RandomAccessFile(new File(mFolderPath, "vocabTable.bin"), "r");
+            totalSecondaryMemory += file.length();
+            file.close();
+            buffer = ByteBuffer.allocate(8)
+                    .putLong(totalSecondaryMemory).array();
+            indexStatFile.write(buffer, 0, buffer.length);
+
+            // // 10 most frequent terms
+            String[] terms = index.getDictionary();
+            ArrayList<String> temp = new ArrayList<>();
+            for (int i = 0; i < 10; i++) {
+                int maxSize = 0;
+                String maxSize_term = null;
+                String term;
+                for (int j = i; j < numOfTerms; j++) {
+                    term = terms[j];
+                    int numOfDocs = index.getPostings(term).size();
+                    if (numOfDocs > maxSize && !temp.contains(term)) {
+                        maxSize = numOfDocs;
+                        maxSize_term = term;
+                    }
                 }
-            } catch (IOException ex) {
-                Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
+                if (maxSize_term != null) {
+                    temp.add(i, maxSize_term);
+                }
             }
+            String[] mostFreqTerms = temp.toArray(new String[temp.size()]);
+            // // // write all the terms to file as [num of byte of term, term]
+            for (String term : mostFreqTerms) {
+                byte[] termByte = term.getBytes();
+                byte[] termByteLength = ByteBuffer.allocate(termByte.length)
+                        .putInt(termByte.length).array();
+                indexStatFile.write(termByteLength, 0, termByteLength.length);
+                indexStatFile.write(termByte, 0, termByte.length);
+            }
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void createDocWeightsFile(String folder) {
+        try (FileOutputStream docWeightFile = new FileOutputStream(new File(folder, "docWeights.bin"));) {
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 }
