@@ -1,5 +1,8 @@
 package diskengine;
 
+import static constants.Constants.scheme;
+import ui.GUI;
+import index.IndexWriter;
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.logging.Level;
@@ -8,11 +11,6 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
 public class DiskEngine {
-
-    /**
-     * 1 - default, 2 - traditional, 3 - okapi, 4 - wacky
-     */
-    public static int scheme = 1;
 
     public static void main(String[] args) {
         while (true) {
@@ -54,6 +52,9 @@ public class DiskEngine {
                     boolean mode = (modeChoice == 0);
 
                     if (!mode) {
+                        // set default scheme for rank retrieval
+                        scheme = 1;
+
                         // select weight scheme to be used in ranked reterival mode
                         options = new String[]{"Default", "Traditional",
                             "Okapi", "Wacky"};

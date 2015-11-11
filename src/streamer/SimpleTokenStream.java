@@ -1,4 +1,4 @@
-package diskengine;
+package streamer;
 
 import java.io.*;
 import java.util.*;

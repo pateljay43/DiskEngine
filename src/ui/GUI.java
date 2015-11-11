@@ -3,8 +3,13 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package diskengine;
+package ui;
 
+import structures.Posting;
+import structures.Statistics;
+import index.DiskPositionalIndex;
+import query.QuerySyntaxCheck;
+import query.QueryProcessor;
 import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Event;

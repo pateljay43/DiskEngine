@@ -1,4 +1,4 @@
-package diskengine;
+package streamer;
 
 /**
  * TokenStreams read tokens one at a time from a stream of input.

@@ -1,5 +1,9 @@
-package diskengine;
+package index;
 
+import constants.Constants;
+import stemmer.PorterStemmer;
+import streamer.SimpleTokenStream;
+import util.VariableByteEncoding;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.file.FileVisitResult;
@@ -86,13 +90,13 @@ public class IndexWriter {
         FileOutputStream postingsFile = null;
         try {
             postingsFile = new FileOutputStream(
-                    new File(folder, "postings.bin")
+                    new File(folder, Constants.postingFile)
             );
 
             // simultaneously build the vocabulary table on disk, mapping a term index to a
             // file location in the postings file.
             FileOutputStream vocabTable = new FileOutputStream(
-                    new File(folder, "vocabTable.bin")
+                    new File(folder, Constants.vocabTableFile)
             );
 
             // the first thing we must write to the vocabTable file is the number of vocab terms.
@@ -173,7 +177,7 @@ public class IndexWriter {
             // also build an array associating each term with its byte location in this file.
             int vocabI = 0;
             vocabList = new OutputStreamWriter(
-                    new FileOutputStream(new File(folder, "vocab.bin")), "ASCII"
+                    new FileOutputStream(new File(folder, Constants.vocabFile)), "ASCII"
             );
 
             int vocabPos = 0;
@@ -246,7 +250,7 @@ public class IndexWriter {
             // write average Ld;
             double Ld_sum = 0.0;
             try (RandomAccessFile mDocWeights = new RandomAccessFile(
-                    new File(folder, "docWeights.bin"), "r")) {
+                    new File(folder, Constants.docWeightFile), "r")) {
                 byte[] buffer = new byte[24];
                 for (int i = 0; i < mDocumentID; i++) {
                     mDocWeights.read(buffer, 0, buffer.length);
@@ -254,7 +258,7 @@ public class IndexWriter {
                 }
             }
             try (FileOutputStream docWeightFile = new FileOutputStream(
-                    new File(mFolderPath, "docWeights.bin"),
+                    new File(mFolderPath, Constants.docWeightFile),
                     true
             )) {
                 double avgLd = Ld_sum / mDocumentID;
@@ -270,7 +274,8 @@ public class IndexWriter {
 
     private void indexFile(File fileName, PositionalInvertedIndex index,
             int documentID) {
-        try (FileOutputStream docWeightFile = new FileOutputStream(new File(mFolderPath, "docWeights.bin"), true);) {
+        try (FileOutputStream docWeightFile = new FileOutputStream(
+                new File(mFolderPath, Constants.docWeightFile), true);) {
             SimpleTokenStream stream = new SimpleTokenStream(fileName);
             int position = 0;
             Set<String> terms = new HashSet<>();
@@ -333,7 +338,7 @@ public class IndexWriter {
 
     private void writeIndexStatistics(PositionalInvertedIndex index) {
         try (FileOutputStream indexStatFile = new FileOutputStream(
-                new File(mFolderPath, "indexStatistics.bin"));) {
+                new File(mFolderPath, Constants.indexStatFile));) {
 
             // write
             // // term count
@@ -351,16 +356,16 @@ public class IndexWriter {
             indexStatFile.write(buffer, 0, buffer.length);
             // // total memory of all files used on secondary memory
             long totalSecondaryMemory = 0;
-            RandomAccessFile file = new RandomAccessFile(new File(mFolderPath, "vocab.bin"), "r");
+            RandomAccessFile file = new RandomAccessFile(new File(mFolderPath, Constants.vocabFile), "r");
             totalSecondaryMemory += file.length();
             file.close();
-            file = new RandomAccessFile(new File(mFolderPath, "postings.bin"), "r");
+            file = new RandomAccessFile(new File(mFolderPath, Constants.postingFile), "r");
             totalSecondaryMemory += file.length();
             file.close();
-            file = new RandomAccessFile(new File(mFolderPath, "docWeights.bin"), "r");
+            file = new RandomAccessFile(new File(mFolderPath, Constants.docWeightFile), "r");
             totalSecondaryMemory += file.length();
             file.close();
-            file = new RandomAccessFile(new File(mFolderPath, "vocabTable.bin"), "r");
+            file = new RandomAccessFile(new File(mFolderPath, Constants.vocabTableFile), "r");
             totalSecondaryMemory += file.length();
             file.close();
             buffer = ByteBuffer.allocate(8)
@@ -403,7 +408,8 @@ public class IndexWriter {
     }
 
     private void createDocWeightsFile(String folder) {
-        try (FileOutputStream docWeightFile = new FileOutputStream(new File(folder, "docWeights.bin"));) {
+        try (FileOutputStream docWeightFile = new FileOutputStream(
+                new File(folder, Constants.docWeightFile));) {
         } catch (FileNotFoundException ex) {
             Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {

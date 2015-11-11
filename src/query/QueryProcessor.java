@@ -3,8 +3,15 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package diskengine;
+package query;
 
+import index.DiskPositionalIndex;
+import stemmer.PorterStemmer;
+import structures.Posting;
+import streamer.QueryStreamer;
+import queue.PriorityQueueComparator;
+import queue.MyPriorityQueue;
+import util.ArrayUtility;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;

@@ -3,8 +3,11 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package diskengine;
+package index;
 
+import constants.Constants;
+import structures.Posting;
+import structures.Statistics;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -36,9 +39,9 @@ public class DiskPositionalIndex {
 
     public DiskPositionalIndex(String path) {
         try {
-            mVocabList = new RandomAccessFile(new File(path, "vocab.bin"), "r");
-            mPostings = new RandomAccessFile(new File(path, "postings.bin"), "r");
-            mDocWeights = new RandomAccessFile(new File(path, "docWeights.bin"), "r");
+            mVocabList = new RandomAccessFile(new File(path, Constants.vocabFile), "r");
+            mPostings = new RandomAccessFile(new File(path, Constants.postingFile), "r");
+            mDocWeights = new RandomAccessFile(new File(path, Constants.docWeightFile), "r");
             mVocabTable = readVocabTable(path);
             mFileNames = readFileNames(path);
             statistics = readStatistics(path);
@@ -239,7 +242,7 @@ public class DiskPositionalIndex {
             long[] vocabTable;
 
             RandomAccessFile tableFile = new RandomAccessFile(
-                    new File(indexName, "vocabTable.bin"),
+                    new File(indexName, Constants.vocabTableFile),
                     "r");
 
             byte[] byteBuffer = new byte[4];
@@ -317,7 +320,7 @@ public class DiskPositionalIndex {
 
     private Statistics readStatistics(String path) {
         Statistics stat;
-        try (RandomAccessFile indexStat = new RandomAccessFile(new File(path, "vocab.bin"), "r");) {
+        try (RandomAccessFile indexStat = new RandomAccessFile(new File(path, Constants.indexStatFile), "r");) {
             stat = new Statistics();
             // read term count
             long termCount = indexStat.readLong();
