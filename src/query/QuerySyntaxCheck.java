@@ -172,9 +172,15 @@ public class QuerySyntaxCheck {
      * @return true if the query is valid; else false.
      */
     public boolean isValidQuery(String query, boolean mode) {
-        String message0 = checkNearOperator(query);
-        if (!message0.equals("valid") && !mode) {
-            return false;
+        if (!mode) {
+            if (query.contains("\"") || query.contains("+") || query.contains("-")) {
+                errorMessage = "You cannot use quotes/operators in ranked mode!";
+                return false;
+            }
+            String message0 = checkNearOperator(query);
+            if (!message0.equals("valid")) {
+                return false;
+            }
         }
         String message1 = checkParenthesis(query);
         if (!message1.equals("valid")) {

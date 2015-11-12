@@ -6,7 +6,6 @@ import stemmer.PorterStemmer;
 import streamer.SimpleTokenStream;
 import util.VariableByteEncoding;
 import java.io.*;
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;

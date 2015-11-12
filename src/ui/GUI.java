@@ -362,7 +362,7 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
                 + "Average number of documents per term: " + df2.format(stat.getAvgDocPerTerm()) + "\n"
                 + "Approximate total secondary memory (MB): "
                 + df2.format(stat.getTotalMemory() / Math.pow(1024.00, 2)) + "\n"
-                + "10 most frequent words statistics: \n\n"
+                + "10 most frequent words: \n\n"
                 + stat.getMostFreqTermsAsString(),
                 "Index Statistics", JOptionPane.INFORMATION_MESSAGE
         );
@@ -459,13 +459,20 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
 
     class TableModel extends AbstractTableModel {
 
-        private final String[] columnNames = {"File Name"};
-        private final Class[] columnClass = new Class[]{String.class};
+        private final String[] columnNames;
+        private final Class[] columnClass;
 
         /**
          * table model to list documents and optionally rank
          */
         public TableModel() {
+            if (mode) { // boolean
+                columnNames = new String[]{"File Name"};
+                columnClass = new Class[]{String.class, String.class};
+            } else {    // rank
+                columnNames = new String[]{"File Name", "Accumulator"};
+                columnClass = new Class[]{String.class, String.class};
+            }
         }
 
         @Override
@@ -490,10 +497,11 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
 
         @Override
         public String getValueAt(int rowIndex, int columnIndex) {
-            // return filename
-            System.out.println(index.getFileName(queryResult[rowIndex].getDocID()) + ": "
-                    + queryResult[rowIndex].getAd());
-            return index.getFileName(queryResult[rowIndex].getDocID());
+            if (columnIndex == 0) {     // file name
+                return index.getFileName(queryResult[rowIndex].getDocID());
+            } else {  // accumulator
+                return "" + queryResult[rowIndex].getAd();
+            }
         }
 
         @Override
