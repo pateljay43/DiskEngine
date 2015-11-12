@@ -1,10 +1,12 @@
 package index;
 
 import constants.Constants;
+import java.awt.Cursor;
 import stemmer.PorterStemmer;
 import streamer.SimpleTokenStream;
 import util.VariableByteEncoding;
 import java.io.*;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -12,9 +14,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.text.DecimalFormat;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JProgressBar;
+import javax.swing.WindowConstants;
+import org.apache.commons.io.FileUtils;
 
 /**
  * Writes an inverted indexing of a directory to disk.
@@ -26,6 +34,9 @@ public class IndexWriter {
     private final Set<String> termList;
     private long totalDocFreq;
     private static int mDocumentID = 0;
+    private final int numOfDocuments;
+    private final JProgressBar pb;
+    private JFrame frame;
 
     /**
      * Constructs an IndexWriter object which is prepared to index the given
@@ -38,6 +49,10 @@ public class IndexWriter {
         porterStemmer = new PorterStemmer();
         termList = new HashSet<>();
         totalDocFreq = 0;
+        File dir = new File(folderPath);
+        String[] extensions = new String[]{"txt"};
+        numOfDocuments = FileUtils.listFiles(dir, extensions, true).size();
+        pb = new JProgressBar(0, numOfDocuments);
     }
 
     /**
@@ -54,30 +69,47 @@ public class IndexWriter {
      * Builds the normal NaiveInvertedIndex for the folder.
      */
     private void buildIndexForDirectory(String folder) {
-//        NaiveInvertedIndex index = new NaiveInvertedIndex();
+        // in memory index
         PositionalInvertedIndex index = new PositionalInvertedIndex();
 
         // delete old "docWeights.bin" if already exists
         createDocWeightsFile(folder);
 
+        // show progress bar
+        showProgressBar();
+
+        // start timer
+        long sTime = System.nanoTime();
         // Index the directory using a naive index
         indexFiles(folder, index);
+        double inMemoryIndexTime = ((double) System.nanoTime() - sTime) / 1000000000;     // seconds
 
         // at this point, "index" contains the in-memory inverted index 
         // now we save the index to disk, building three files: the postings index,
         // the vocabulary list, and the vocabulary table.
         // the array of terms
         String[] dictionary = index.getDictionary();
-        System.out.println("Number of terms: " + dictionary.length);
         // an array of positions in the vocabulary file
         // each element will hold position (long) where term starts in vocab.bin
         long[] vocabPositions = new long[dictionary.length];
 
         buildVocabFile(folder, dictionary, vocabPositions);
+        double vocabFileIndexTime = ((double) System.nanoTime() - inMemoryIndexTime) / 1000000000;     // seconds
         buildPostingsFile(folder, index, dictionary, vocabPositions);
-
+        double postingsFileIndexTime = ((double) System.nanoTime() - vocabFileIndexTime) / 1000000000;     // seconds
         // write index statistics to "indexStatistics.bin" file
         writeIndexStatistics(index);
+        double writeIndexStatTime = ((double) System.nanoTime() - postingsFileIndexTime) / 1000000000;     // seconds
+        double indexTime = ((double) System.nanoTime() - sTime) / 1000000000;     // seconds
+        frame.dispose();
+        DecimalFormat df2 = new DecimalFormat("#.##");
+        JOptionPane.showMessageDialog(null, "Time taken to build full index:\n"
+                + "In Memory index: " + df2.format(inMemoryIndexTime) + "seconds"
+                + "Vocab file index: " + df2.format(vocabFileIndexTime) + "seconds"
+                + "Vocab table and postings index: " + df2.format(postingsFileIndexTime) + "seconds"
+                + "Index statistics file: " + df2.format(writeIndexStatTime) + "seconds"
+                + df2.format(BigDecimal.valueOf(indexTime))
+                + " seconds");
     }
 
     /**
@@ -224,6 +256,7 @@ public class IndexWriter {
 
                         indexFile(file.toFile(), index, mDocumentID);
                         mDocumentID++;
+                        pb.setValue(mDocumentID);
                     }
                     return FileVisitResult.CONTINUE;
                 }
@@ -232,10 +265,8 @@ public class IndexWriter {
                 @Override
                 public FileVisitResult visitFileFailed(Path file,
                         IOException e) {
-
                     return FileVisitResult.CONTINUE;
                 }
-
             });
 
             // write average Ld;
@@ -378,7 +409,7 @@ public class IndexWriter {
 
             // // most frequent terms
             String[] mostFreqTerms = index.getMostFrequentTerms(Constants.mostFreqTermCount);
-            
+
             // // write all the terms to file as [num of byte of term, term]
             for (String term : mostFreqTerms) {
                 byte[] termByte = term.getBytes();
@@ -407,5 +438,21 @@ public class IndexWriter {
         } catch (IOException ex) {
             Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+
+    private void showProgressBar() {
+        pb.setStringPainted(true);
+        pb.setBorderPainted(true);
+        pb.setBounds(10, 10, 370, 25);
+        pb.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        int offset = System.getProperty("os.name").toLowerCase().contains("windows") ? 30 : 20;
+        frame = new JFrame("Scanning Directory");
+        frame.add(pb);
+        frame.setSize(400, 45 + offset);
+        frame.setLayout(null);
+        frame.setResizable(false);
+        frame.setVisible(true);
+        frame.setLocationRelativeTo(null);
+        frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
     }
 }
