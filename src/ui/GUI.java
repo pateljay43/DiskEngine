@@ -491,6 +491,8 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
         @Override
         public String getValueAt(int rowIndex, int columnIndex) {
             // return filename
+            System.out.println(index.getFileName(queryResult[rowIndex].getDocID()) + ": "
+                    + queryResult[rowIndex].getAd());
             return index.getFileName(queryResult[rowIndex].getDocID());
         }
 

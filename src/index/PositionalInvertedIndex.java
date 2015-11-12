@@ -72,6 +72,10 @@ public class PositionalInvertedIndex {
         return mIndex.get(term).get(documentId);
     }
 
+    public int getTermFrequency(String term, int documentId) {
+        return mIndex.get(term).get(documentId).size();
+    }
+
     /**
      *
      * @return number of terms in dictionary

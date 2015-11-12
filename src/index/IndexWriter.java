@@ -33,10 +33,11 @@ public class IndexWriter {
     private final PorterStemmer porterStemmer;
     private final Set<String> termList;
     private long totalDocFreq;
-    private static int mDocumentID = 0;
     private final int numOfDocuments;
     private final JProgressBar pb;
     private JFrame frame;
+    private Double Ld_sum;
+    private static int mDocumentID;
 
     /**
      * Constructs an IndexWriter object which is prepared to index the given
@@ -45,6 +46,7 @@ public class IndexWriter {
      * @param folderPath path to folder containing files
      */
     public IndexWriter(String folderPath) {
+        mDocumentID = 0;
         mFolderPath = folderPath;
         porterStemmer = new PorterStemmer();
         termList = new HashSet<>();
@@ -53,6 +55,7 @@ public class IndexWriter {
         String[] extensions = new String[]{"txt"};
         numOfDocuments = FileUtils.listFiles(dir, extensions, true).size();
         pb = new JProgressBar(0, numOfDocuments);
+        Ld_sum = 0.0;
     }
 
     /**
@@ -82,7 +85,7 @@ public class IndexWriter {
         long sTime = System.nanoTime();
         // Index the directory using a naive index
         indexFiles(folder, index);
-        double inMemoryIndexTime = ((double) System.nanoTime() - sTime) / 1000000000;     // seconds
+        long t1 = System.nanoTime();
 
         // at this point, "index" contains the in-memory inverted index 
         // now we save the index to disk, building three files: the postings index,
@@ -94,21 +97,22 @@ public class IndexWriter {
         long[] vocabPositions = new long[dictionary.length];
 
         buildVocabFile(folder, dictionary, vocabPositions);
-        double vocabFileIndexTime = ((double) System.nanoTime() - inMemoryIndexTime) / 1000000000;     // seconds
+        long t2 = System.nanoTime();
         buildPostingsFile(folder, index, dictionary, vocabPositions);
-        double postingsFileIndexTime = ((double) System.nanoTime() - vocabFileIndexTime) / 1000000000;     // seconds
+        long t3 = System.nanoTime();
         // write index statistics to "indexStatistics.bin" file
         writeIndexStatistics(index);
-        double writeIndexStatTime = ((double) System.nanoTime() - postingsFileIndexTime) / 1000000000;     // seconds
-        double indexTime = ((double) System.nanoTime() - sTime) / 1000000000;     // seconds
+        long t4 = System.nanoTime();
+        double indexTime = ((double) System.nanoTime() - sTime);
         frame.dispose();
         DecimalFormat df2 = new DecimalFormat("#.##");
         JOptionPane.showMessageDialog(null, "Time taken to build full index:\n\n"
-                + "In Memory index: " + df2.format(inMemoryIndexTime) + "seconds\n"
-                + "Vocab file index: " + df2.format(vocabFileIndexTime) + "seconds\n"
-                + "Vocab table and postings index: " + df2.format(postingsFileIndexTime) + "seconds\n"
-                + "Index statistics file: " + df2.format(writeIndexStatTime) + "seconds\n\n"
-                + "Total index time: " + df2.format(BigDecimal.valueOf(indexTime)) + " seconds");
+                + "In Memory index: " + df2.format((double) (t1 - sTime) / 1000000000) + " seconds\n"
+                + "Vocab file index: " + df2.format((double) (t2 - t1) / 1000000000) + " seconds\n"
+                + "Vocab table, postings and docWeight file: "
+                + df2.format((double) (t3 - t2) / 1000000000) + " seconds\n"
+                + "Index statistics file: " + df2.format((double) (t4 - t3) / 1000000000) + " seconds\n\n"
+                + "Total index time: " + df2.format(indexTime / 1000000000) + " seconds");
     }
 
     /**
@@ -230,10 +234,8 @@ public class IndexWriter {
      */
     private void indexFiles(String folder, final PositionalInvertedIndex index) {
         final Path currentWorkingPath = Paths.get(folder).toAbsolutePath();
-
         try {
             Files.walkFileTree(currentWorkingPath, new SimpleFileVisitor<Path>() {
-
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir,
                         BasicFileAttributes attrs) {
@@ -268,20 +270,9 @@ public class IndexWriter {
                 }
             });
 
-            // write average Ld;
-            double Ld_sum = 0.0;
-            try (RandomAccessFile mDocWeights = new RandomAccessFile(
-                    new File(folder, Constants.docWeightFile), "r")) {
-                byte[] buffer = new byte[24];
-                for (int i = 0; i < mDocumentID; i++) {
-                    mDocWeights.read(buffer, 0, buffer.length);
-                    Ld_sum = Ld_sum + ByteBuffer.wrap(buffer, 0, 8).getDouble();
-                }
-            }
+            // write average Ld
             try (FileOutputStream docWeightFile = new FileOutputStream(
-                    new File(mFolderPath, Constants.docWeightFile),
-                    true
-            )) {
+                    new File(mFolderPath, Constants.docWeightFile), true)) {
                 double avgLd = Ld_sum / mDocumentID;
                 byte[] LdBytes = ByteBuffer.allocate(8)
                         .putDouble(avgLd).array();
@@ -338,13 +329,14 @@ public class IndexWriter {
             double sumOfWdt_2 = 0.0;
             long sum_tf = 0;
             for (String term : terms) {
-                int tf = index.getPositionalList(term, documentID).size();
+                int tf = index.getTermFrequency(term, documentID);
                 sum_tf = sum_tf + tf;
                 sumOfWdt_2 = sumOfWdt_2 + Math.pow((1 + ((tf == 0) ? 0 : Math.log(tf))), 2);
             }
 
             // write Ld
             double Ld = (sumOfWdt_2 == 0.0) ? 0.0 : Math.sqrt(sumOfWdt_2);
+            Ld_sum = Ld_sum + Ld;
             byte[] LdBytes = ByteBuffer.allocate(8)
                     .putDouble(Ld).array();
             docWeightFile.write(LdBytes, 0, LdBytes.length);

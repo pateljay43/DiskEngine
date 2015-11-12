@@ -19,7 +19,7 @@ public class Statistics {
     private long numOfTypes;
     private double avgDocPerTerm;
     private long totalMemory;
-    private List<String> mostFreqTerms;
+    private final List<String> mostFreqTerms;
 
     /**
      * Statistics of index containing number of terms, number of types, average
@@ -34,7 +34,7 @@ public class Statistics {
      *
      * @return number of terms in index
      */
-    public double getTermCount() {
+    public long getTermCount() {
         return termCount;
     }
 

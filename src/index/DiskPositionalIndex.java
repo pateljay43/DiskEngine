@@ -381,7 +381,7 @@ public class DiskPositionalIndex {
             long numOfTypes = indexStat.readLong();
             stat.setNumOfTypes(numOfTypes);
             // read average number of documents per term
-            Double avg = indexStat.readDouble();
+            double avg = indexStat.readDouble();
             stat.setAvgDocPerTerm(avg);
             // read total memory of all files used on secondary memory
             long mem = indexStat.readLong();
