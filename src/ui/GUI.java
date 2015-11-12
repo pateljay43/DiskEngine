@@ -432,15 +432,15 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
             if (text.equals("")) {
                 queryHistoryPointer = queryHistory.size();
                 hideResultPanel();
-            } else if (text.length() >= 3) {
-                startQueryProcessor(false, System.nanoTime());
+//            } else if (text.length() >= 3) {
+//                startQueryProcessor(false, System.nanoTime());
             }
         } else if (key != KeyEvent.VK_ENTER && key != KeyEvent.VK_ESCAPE) { // pressed any key but enter/escape
-            if (text.length() >= 3) {
-                startQueryProcessor(false, System.nanoTime());
-            } else if (text.length() < 3) {
-                hideResultPanel();
-            }
+//            if (text.length() >= 3) {
+//                startQueryProcessor(false, System.nanoTime());
+//            } else if (text.length() < 3) {
+//                hideResultPanel();
+//            }
         }
     }
 
