@@ -103,13 +103,12 @@ public class IndexWriter {
         double indexTime = ((double) System.nanoTime() - sTime) / 1000000000;     // seconds
         frame.dispose();
         DecimalFormat df2 = new DecimalFormat("#.##");
-        JOptionPane.showMessageDialog(null, "Time taken to build full index:\n"
-                + "In Memory index: " + df2.format(inMemoryIndexTime) + "seconds"
-                + "Vocab file index: " + df2.format(vocabFileIndexTime) + "seconds"
-                + "Vocab table and postings index: " + df2.format(postingsFileIndexTime) + "seconds"
-                + "Index statistics file: " + df2.format(writeIndexStatTime) + "seconds"
-                + df2.format(BigDecimal.valueOf(indexTime))
-                + " seconds");
+        JOptionPane.showMessageDialog(null, "Time taken to build full index:\n\n"
+                + "In Memory index: " + df2.format(inMemoryIndexTime) + "seconds\n"
+                + "Vocab file index: " + df2.format(vocabFileIndexTime) + "seconds\n"
+                + "Vocab table and postings index: " + df2.format(postingsFileIndexTime) + "seconds\n"
+                + "Index statistics file: " + df2.format(writeIndexStatTime) + "seconds\n\n"
+                + "Total index time: " + df2.format(BigDecimal.valueOf(indexTime)) + " seconds");
     }
 
     /**
