@@ -112,7 +112,7 @@ public class QuerySyntaxCheck {
         }
         return errorMessage;
     }
-    
+
     // check if near operator used properly or not used at all
     public String checkNearOperator(String query) {
         errorMessage = "valid";
@@ -122,7 +122,7 @@ public class QuerySyntaxCheck {
         } else {
             if (query.contains(s)) {
                 int index = query.indexOf(s);
-                if (index<=1 || query.length() < index + 8) {
+                if (index <= 1 || query.length() < index + 8) {
                     errorMessage = "Invalid usage of NEAR operator!";
                     return errorMessage;
                 }
@@ -137,14 +137,12 @@ public class QuerySyntaxCheck {
     }
 
     // true if query passed all three syntax checking conditions
-
     /**
      *
      * @param query query to be checked.
      * @param mode true for boolean, false for ranked.
      * @return true if the query is valid; else false.
      */
-    
     public boolean isValidQuery(String query, boolean mode) {
         String message0 = checkNearOperator(query);
         if (!message0.equals("valid") && !mode) {

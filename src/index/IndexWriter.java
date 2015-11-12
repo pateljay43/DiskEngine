@@ -62,8 +62,6 @@ public class IndexWriter {
         // Index the directory using a naive index
         indexFiles(folder, index);
 
-        
-
         // at this point, "index" contains the in-memory inverted index 
         // now we save the index to disk, building three files: the postings index,
         // the vocabulary list, and the vocabulary table.
@@ -76,7 +74,7 @@ public class IndexWriter {
 
         buildVocabFile(folder, dictionary, vocabPositions);
         buildPostingsFile(folder, index, dictionary, vocabPositions);
-        
+
         // write index statistics to "indexStatistics.bin" file
         writeIndexStatistics(index);
     }
@@ -337,12 +335,33 @@ public class IndexWriter {
     }
 
     private void writeIndexStatistics(PositionalInvertedIndex index) {
+        long numOfTerms = index.getTermCount();
+
+        // // most frequent terms
+        String[] terms = index.getDictionary();
+        ArrayList<String> temp = new ArrayList<>();
+        for (int i = 0; i < Constants.mostFreqTermCount; i++) {
+            int maxSize = 0;
+            String maxSize_term = null;
+            String term;
+            for (int j = i; j < numOfTerms; j++) {
+                term = terms[j];
+                int numOfDocs = index.getPostings(term).size();
+                if (numOfDocs > maxSize && !temp.contains(term)) {
+                    maxSize = numOfDocs;
+                    maxSize_term = term;
+                }
+            }
+            if (maxSize_term != null) {
+                temp.add(i, maxSize_term);
+            }
+        }
+        String[] mostFreqTerms = temp.toArray(new String[temp.size()]);
         try (FileOutputStream indexStatFile = new FileOutputStream(
                 new File(mFolderPath, Constants.indexStatFile));) {
 
             // write
             // // term count
-            long numOfTerms = index.getTermCount();
             byte[] buffer = ByteBuffer.allocate(8)
                     .putLong(numOfTerms).array();
             indexStatFile.write(buffer, 0, buffer.length);
@@ -372,30 +391,10 @@ public class IndexWriter {
                     .putLong(totalSecondaryMemory).array();
             indexStatFile.write(buffer, 0, buffer.length);
 
-            // // 10 most frequent terms
-            String[] terms = index.getDictionary();
-            ArrayList<String> temp = new ArrayList<>();
-            for (int i = 0; i < 10; i++) {
-                int maxSize = 0;
-                String maxSize_term = null;
-                String term;
-                for (int j = i; j < numOfTerms; j++) {
-                    term = terms[j];
-                    int numOfDocs = index.getPostings(term).size();
-                    if (numOfDocs > maxSize && !temp.contains(term)) {
-                        maxSize = numOfDocs;
-                        maxSize_term = term;
-                    }
-                }
-                if (maxSize_term != null) {
-                    temp.add(i, maxSize_term);
-                }
-            }
-            String[] mostFreqTerms = temp.toArray(new String[temp.size()]);
             // // // write all the terms to file as [num of byte of term, term]
             for (String term : mostFreqTerms) {
                 byte[] termByte = term.getBytes();
-                byte[] termByteLength = ByteBuffer.allocate(termByte.length)
+                byte[] termByteLength = ByteBuffer.allocate(4)
                         .putInt(termByte.length).array();
                 indexStatFile.write(termByteLength, 0, termByteLength.length);
                 indexStatFile.write(termByte, 0, termByte.length);

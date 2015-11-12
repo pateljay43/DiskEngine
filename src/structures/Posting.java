@@ -1,12 +1,11 @@
 package structures;
 
-import diskengine.DiskEngine;
 import constants.Constants;
-import rankscheme.WackyScheme;
-import rankscheme.OkapiScheme;
-import rankscheme.DefaultScheme;
-import rankscheme.TraditionalScheme;
-import rankscheme.WeightScheme;
+import rankschemes.WackyScheme;
+import rankschemes.OkapiScheme;
+import rankschemes.DefaultScheme;
+import rankschemes.TraditionalScheme;
+import rankschemes.WeightScheme;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -118,16 +117,16 @@ public class Posting {
 
     public void setScheme(double docWeight, double byteSize, double avgTf, double avgDocWeight) {
         switch (Constants.scheme) {
-            case 1:
+            case 0:
                 scheme = new DefaultScheme(docWeight, tf);
                 break;
-            case 2:
+            case 1:
                 scheme = new TraditionalScheme(docWeight, tf);
                 break;
-            case 3:
+            case 2:
                 scheme = new OkapiScheme(docWeight, avgDocWeight, tf);
                 break;
-            case 4:
+            case 3:
                 scheme = new WackyScheme(avgTf, byteSize, tf);
                 break;
             default:

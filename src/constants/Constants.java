@@ -18,8 +18,10 @@ public class Constants {
     public static String indexStatFile = "indexStatistics.bin";
 
     /**
-     * scheme to be used for ranked retrieval
-     * 1 - default, 2 - traditional, 3 - okapi, 4 - wacky
+     * scheme to be used for ranked retrieval 0 - default, 1 - traditional, 2 -
+     * okapi, 3 - wacky
      */
     public static int scheme = 1;
+    public static int mostFreqTermCount = 10;
+    public static int maxNumOfDocsToReturn = 10;
 }

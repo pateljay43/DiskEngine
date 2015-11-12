@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package rankscheme;
+package rankschemes;
 
 /**
  *
@@ -20,8 +20,7 @@ public abstract class WeightScheme {
     public abstract void calcWdt(double tftd);
 
     public abstract void calcLd();
-    
-    
+
     public final double getWqt() {
         return wqt;
     }

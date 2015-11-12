@@ -23,22 +23,20 @@ public class DiskEngine {
                     JOptionPane.QUESTION_MESSAGE,
                     null,
                     options,
-                    options[0]);
-
+                    options[1]);
+            if (menuChoice == JOptionPane.CLOSED_OPTION) {
+                System.exit(0);
+            }
             // select directory
             String folder = selectDirectory();
-//        String folder = "/Users/JAY/Desktop/529 - SET/all corpus/angels";
-//        String folder = "/Users/JAY/Desktop/529 - SET/all corpus/MobyDick10Chapters";
-//        String folder = "/Users/JAY/Desktop/529 - SET/all corpus/MobyDickChapters";
-//        String folder = "/Users/JAY/Desktop/529 - SET/all corpus/mycorpus";
 
             switch (menuChoice) {
-                case 1: {   // build index
+                case 0: {   // build index
                     IndexWriter writer = new IndexWriter(folder);
                     writer.buildIndex();
                     break;
                 }
-                case 2: {   // read index
+                case 1: {   // read index
                     // select processing mode
                     options = new String[]{"Boolean Mode", "Ranked Mode"};
                     int modeChoice = JOptionPane.showOptionDialog(null,
@@ -48,12 +46,15 @@ public class DiskEngine {
                             JOptionPane.QUESTION_MESSAGE,
                             null,
                             options,
-                            options[0]);
+                            options[1]);
+                    if (modeChoice == JOptionPane.CLOSED_OPTION) {
+                        System.exit(0);
+                    }
                     boolean mode = (modeChoice == 0);
 
                     if (!mode) {
                         // set default scheme for rank retrieval
-                        scheme = 1;
+                        scheme = 0;
 
                         // select weight scheme to be used in ranked reterival mode
                         options = new String[]{"Default", "Traditional",

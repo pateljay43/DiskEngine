@@ -3,32 +3,32 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package rankscheme;
+package rankschemes;
 
 import static java.lang.Math.log;
 
-public final class DefaultScheme extends WeightScheme {
+public final class TraditionalScheme extends WeightScheme {
 
-    private final double docWeight;
+    private final double docWeights;
 
-    public DefaultScheme(double _docWeight, double _tf) {
-        docWeight = _docWeight;
+    public TraditionalScheme(double _mDocWeight, double _tf) {
+        docWeights = _mDocWeight;
         this.calcWdt(_tf);
         this.calcLd();
     }
 
     @Override
     public final void calcWqt(double N, double dft) {
-        wqt = log(1.0 + N / dft);
+        wqt = (N == 0.0 || dft == 0.0) ? 0.0 : log(N / dft);
     }
 
     @Override
     public final void calcWdt(double tftd) {
-        wdt = 1.0 + log(tftd);
+        wdt = tftd;
     }
 
     @Override
     public final void calcLd() {
-        Ld = docWeight;
+        Ld = docWeights;
     }
 }

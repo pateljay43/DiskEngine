@@ -5,6 +5,7 @@
  */
 package query;
 
+import constants.Constants;
 import index.DiskPositionalIndex;
 import stemmer.PorterStemmer;
 import structures.Posting;
@@ -45,7 +46,7 @@ public class QueryProcessor {
      * @return query result containing the Postings
      */
     public Posting[] processQuery(String query, boolean mode) {
-        return this.processQuery(query, mode, 10);
+        return this.processQuery(query, mode, Constants.maxNumOfDocsToReturn);
     }
 
     /**

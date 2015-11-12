@@ -5,6 +5,7 @@
  */
 package structures;
 
+import constants.Constants;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,10 +63,10 @@ public class Statistics {
 
     public String getMostFreqTermsAsString() {
         String ret = "";
-        for (String term : mostFreqTerms) {
-            ret = ret + term + ", ";
+        int length = Constants.mostFreqTermCount;
+        for (int i = 0; i < length; i++) {
+            ret = ret + mostFreqTerms.get(i) + ((i != length - 1) ? ", " : "");
         }
-        ret = ret + "\b\b";
         return ret;
     }
 

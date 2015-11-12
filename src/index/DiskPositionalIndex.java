@@ -336,10 +336,10 @@ public class DiskPositionalIndex {
             stat.setTotalMemory(mem);
             // read all the terms to file as [num of byte of term, term]
             byte[] buffer;
-            for (int i = 0; i < termCount; i++) {
+            for (int i = 0; i < Constants.mostFreqTermCount; i++) {
                 // number of bytes of this term
-                Double bytelength = indexStat.readDouble();
-                buffer = new byte[bytelength.intValue()];
+                int bytelength = indexStat.readInt();
+                buffer = new byte[bytelength];
                 // read term
                 indexStat.read(buffer, 0, buffer.length);
                 // add term to statistics
