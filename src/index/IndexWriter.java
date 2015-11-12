@@ -25,6 +25,7 @@ public class IndexWriter {
     private final PorterStemmer porterStemmer;
     private final Set<String> termList;
     private long totalDocFreq;
+    private static int mDocumentID = 0;
 
     /**
      * Constructs an IndexWriter object which is prepared to index the given
@@ -85,11 +86,8 @@ public class IndexWriter {
      */
     private static void buildPostingsFile(String folder, PositionalInvertedIndex index,
             String[] dictionary, long[] vocabPositions) {
-        FileOutputStream postingsFile = null;
-        try {
-            postingsFile = new FileOutputStream(
-                    new File(folder, Constants.postingFile)
-            );
+        try (FileOutputStream postingsFile = new FileOutputStream(
+                new File(folder, Constants.postingFile));) {
 
             // simultaneously build the vocabulary table on disk, mapping a term index to a
             // file location in the postings file.
@@ -124,7 +122,6 @@ public class IndexWriter {
                  as gaps*/
                 byte[] docFreqBytes = ByteBuffer.allocate(4)
                         .putInt(postings.size()).array();
-//                byte[] docFreqBytes = VariableByteEncoding.encodeNumber(postings.size());
                 postingsFile.write(docFreqBytes, 0, docFreqBytes.length);
 
                 int lastDocId = 0;
@@ -144,9 +141,7 @@ public class IndexWriter {
 
                     int lastPos = 0;
                     for (int pos : positionalList) {
-//                        byte[] position = ByteBuffer.allocate(4).putInt(pos - lastPos).array();
                         byte[] position = VariableByteEncoding.encodeNumber(pos - lastPos);
-
                         postingsFile.write(position, 0, position.length);
                         lastPos = pos;
                     }
@@ -159,24 +154,23 @@ public class IndexWriter {
             ex.printStackTrace();
         } catch (IOException ex) {
             ex.printStackTrace();
-        } finally {
-            try {
-                postingsFile.close();
-            } catch (IOException ex) {
-            }
         }
     }
 
+    /**
+     * generates vocab binary file containing dictionary (terms)
+     *
+     * @param folder locations where file is to be generated
+     * @param dictionary terms to be written in the file
+     * @param vocabPositions positions of each term in the generated file
+     */
     private static void buildVocabFile(String folder, String[] dictionary,
             long[] vocabPositions) {
-        OutputStreamWriter vocabList = null;
-        try {
+        try (OutputStreamWriter vocabList = new OutputStreamWriter(
+                new FileOutputStream(new File(folder, Constants.vocabFile)), "ASCII");) {
             // first build the vocabulary list: a file of each vocab word concatenated together.
             // also build an array associating each term with its byte location in this file.
             int vocabI = 0;
-            vocabList = new OutputStreamWriter(
-                    new FileOutputStream(new File(folder, Constants.vocabFile)), "ASCII"
-            );
 
             int vocabPos = 0;
             for (String vocabWord : dictionary) {
@@ -193,17 +187,16 @@ public class IndexWriter {
             System.out.println(ex.toString());
         } catch (IOException ex) {
             System.out.println(ex.toString());
-        } finally {
-            try {
-                vocabList.close();
-            } catch (IOException ex) {
-                System.out.println(ex.toString());
-            }
         }
     }
 
-    private static int mDocumentID = 0;
-
+    /**
+     * generate in memory index of all the text files inside given folder
+     * location
+     *
+     * @param folder folder containing all the text files
+     * @param index in memory index to be generated
+     */
     private void indexFiles(String folder, final PositionalInvertedIndex index) {
         final Path currentWorkingPath = Paths.get(folder).toAbsolutePath();
 
@@ -270,6 +263,13 @@ public class IndexWriter {
 
     }
 
+    /**
+     * generate in memory index of fileName mapped with given document ID
+     *
+     * @param fileName file to be indexed
+     * @param index in memory index
+     * @param documentID document id mapped with given fileName
+     */
     private void indexFile(File fileName, PositionalInvertedIndex index,
             int documentID) {
         try (FileOutputStream docWeightFile = new FileOutputStream(
@@ -334,29 +334,14 @@ public class IndexWriter {
         }
     }
 
+    /**
+     * write index statistics to binary file
+     *
+     * @param index index whose statistics is to be written to binary file
+     */
     private void writeIndexStatistics(PositionalInvertedIndex index) {
         long numOfTerms = index.getTermCount();
 
-        // // most frequent terms
-        String[] terms = index.getDictionary();
-        ArrayList<String> temp = new ArrayList<>();
-        for (int i = 0; i < Constants.mostFreqTermCount; i++) {
-            int maxSize = 0;
-            String maxSize_term = null;
-            String term;
-            for (int j = i; j < numOfTerms; j++) {
-                term = terms[j];
-                int numOfDocs = index.getPostings(term).size();
-                if (numOfDocs > maxSize && !temp.contains(term)) {
-                    maxSize = numOfDocs;
-                    maxSize_term = term;
-                }
-            }
-            if (maxSize_term != null) {
-                temp.add(i, maxSize_term);
-            }
-        }
-        String[] mostFreqTerms = temp.toArray(new String[temp.size()]);
         try (FileOutputStream indexStatFile = new FileOutputStream(
                 new File(mFolderPath, Constants.indexStatFile));) {
 
@@ -391,7 +376,10 @@ public class IndexWriter {
                     .putLong(totalSecondaryMemory).array();
             indexStatFile.write(buffer, 0, buffer.length);
 
-            // // // write all the terms to file as [num of byte of term, term]
+            // // most frequent terms
+            String[] mostFreqTerms = index.getMostFrequentTerms(Constants.mostFreqTermCount);
+            
+            // // write all the terms to file as [num of byte of term, term]
             for (String term : mostFreqTerms) {
                 byte[] termByte = term.getBytes();
                 byte[] termByteLength = ByteBuffer.allocate(4)
@@ -406,6 +394,11 @@ public class IndexWriter {
         }
     }
 
+    /**
+     * generate file containing weights for each document in given folder
+     *
+     * @param folder folder containing all the documents
+     */
     private void createDocWeightsFile(String folder) {
         try (FileOutputStream docWeightFile = new FileOutputStream(
                 new File(folder, Constants.docWeightFile));) {

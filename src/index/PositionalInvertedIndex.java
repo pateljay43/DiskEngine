@@ -5,11 +5,9 @@
  */
 package index;
 
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.HashMap;
 import java.util.List;
@@ -23,16 +21,6 @@ public class PositionalInvertedIndex {
     // <term,<docID,<p1,p2,...,pn>>>
     private final HashMap<String, TreeMap<Integer, ArrayList<Integer>>> mIndex;
     //private final HashMap<String, List<PositionalPosting>>
-    private String mostFreqTerms;
-    private double avgDocPerTerm;
-    private final DecimalFormat df2;
-
-    private int largestWord;
-
-    // Variables for statistics
-    private int totalDocumentsFrequency;
-    private int numOfDocuments;
-    private int totalMemory;
 
     /**
      * creates new mIndex which stores terms with document in which it occurs
@@ -40,8 +28,6 @@ public class PositionalInvertedIndex {
      */
     public PositionalInvertedIndex() {
         mIndex = new HashMap<>();
-        largestWord = 0;
-        df2 = new DecimalFormat("#.##");
     }
 
     /**
@@ -61,7 +47,6 @@ public class PositionalInvertedIndex {
             postings.put(documentID, positionalList);
             mIndex.put(term, postings);
         }
-        largestWord = Math.max(largestWord, term.length());
     }
 
     /**
@@ -73,8 +58,6 @@ public class PositionalInvertedIndex {
      */
     public TreeMap<Integer, ArrayList<Integer>> getPostings(String term) {
         TreeMap<Integer, ArrayList<Integer>> postings = mIndex.getOrDefault(term, new TreeMap<>());
-//        ArrayList<Integer> list = new ArrayList<>();
-//        list.addAll(keySet);
         return postings;
     }
 
@@ -108,78 +91,13 @@ public class PositionalInvertedIndex {
     }
 
     /**
-     *
-     * @return length of largest term in dictionary
-     */
-    public int getLargestWordLength() {
-        return largestWord;
-    }
-
-    /**
-     * @return the totalMemory
-     */
-    public int getTotalMemory() {
-        return totalMemory;
-    }
-
-    /**
-     * @return the totalDocumentsFrequency
-     */
-    public int getTotalDocumentsFrequency() {
-        return totalDocumentsFrequency;
-    }
-
-    /**
-     * calculate statistics of index and find 'mostFreqLimit' terms in that
-     * index
-     *
-     * @param mostFreqLimit
-     */
-    public void indexFinalize(int mostFreqLimit) {
-        int totalStrMem = 0;
-        int totalPostListMem = 0;
-        int totalPostMem = 0;
-        totalDocumentsFrequency = 0;
-
-        // set of all terms
-        Set keys = mIndex.keySet();
-
-        // calculate total hash memory
-        int hashMem = 24 + 36 * mIndex.size();
-        Iterator itr = keys.iterator();
-        while (itr.hasNext()) {
-            String key = (String) itr.next();
-            // calculate string memory
-            int strMem = 40;
-            strMem = strMem + 2 * key.length();
-            totalStrMem = totalStrMem + strMem;
-
-            //calculate total postings list memory
-            totalPostListMem = totalPostListMem + 24 + 8 * mIndex.get(key).size();
-
-            //calculate total posting memory
-            // set of all docID for 'key' term
-            Set docKeys = mIndex.get(key).keySet();
-            Iterator docItr = docKeys.iterator();
-            while (docItr.hasNext()) {
-                int docKey = (Integer) docItr.next();
-                totalPostMem = totalPostMem + 48 + 4 * mIndex.get(key).get(docKey).size();
-                totalDocumentsFrequency++;
-            }
-        }
-        totalMemory = hashMem + totalStrMem + totalPostListMem + totalPostMem;
-        avgDocPerTerm = ((double) totalDocumentsFrequency) / mIndex.size();
-        mostFrequentTerms(mostFreqLimit);
-    }
-
-    /**
      * find k most frequent terms from the index
      *
      * @param k must be greater than 1
+     * @return list of top k most occurring terms in index
      */
-    public void mostFrequentTerms(int k) {
-        mostFreqTerms = "";
-        ArrayList<String> temp = new ArrayList<>();
+    public String[] getMostFrequentTerms(int k) {
+        List<String> temp = new ArrayList<>(k);
         for (int i = 0; i < k; i++) {
             int maxSize = 0;
             String maxSize_Key = null;
@@ -196,22 +114,6 @@ public class PositionalInvertedIndex {
                 temp.add(i, maxSize_Key);
             }
         }
-        temp.stream().forEach((key) -> {
-            mostFreqTerms = mostFreqTerms + "\t<" + key + ", "
-                    + df2.format((double) mIndex.get(key).size() / numOfDocuments) + ">\n";
-        });
+        return temp.toArray(new String[k]);
     }
-
-    public String getMostFreqTerms() {
-        return mostFreqTerms;
-    }
-
-    public double getAvgDocPerTerm() {
-        return avgDocPerTerm;
-    }
-
-    public void setNumOfDocuments(int numOfDocuments) {
-        this.numOfDocuments = numOfDocuments;
-    }
-
 }

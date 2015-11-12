@@ -41,37 +41,34 @@ import javax.swing.table.AbstractTableModel;
  *
  * @author JAY
  */
-public class GUI extends JFrame implements MouseListener {
+public class GUI extends JFrame implements MouseListener, KeyListener {
 
     private DecimalFormat df2;
     private DiskPositionalIndex index;
     private QueryProcessor queryProcessor;
     private QuerySyntaxCheck syntaxChecker;
-    private static HashMap<String, Posting[]> queryHistory;
-    private static ArrayList<String> queryHistoryArray;
-    private static int queryHistoryPointer;
     private Posting[] queryResult;
-
     private JTextField queryTF;
     private JButton searchBtn;
     private JButton newDirectoryBtn;
-    // result table
-    private TableModel tableModel;
     private JTable Jtable;
+    private TableModel tableModel;
     private JScrollPane tableScrollPane;
     private JLabel processingTimeLBL;
     private JLabel processingTime;
     private JLabel numOfDocumentsLBL;
     private JLabel numOfDocuments;
     private JLabel indexStatisticsLBL;
-    private boolean changeIndex;
     private String folder;
-    private boolean quit;
     private int guiHeightOffset;
-    private static boolean mode;
+    private boolean quit;
+    private boolean changeIndex;
+    private boolean mode;
+    private static int queryHistoryPointer;
+    private static HashMap<String, Posting[]> queryHistory;
+    private static ArrayList<String> queryHistoryArray;
 
-    public GUI(String _currentWorkingPath,
-            boolean _mode) {
+    public GUI(String _currentWorkingPath, boolean _mode) {
         if (System.getProperty("os.name").toLowerCase().contains("windows")) {
             guiHeightOffset = 30;
         } else {
@@ -83,7 +80,7 @@ public class GUI extends JFrame implements MouseListener {
         changeIndex = false;
         try {
             index = new DiskPositionalIndex(folder);
-            queryProcessor = new QueryProcessor(index);
+            queryProcessor = new QueryProcessor(index, mode);
             syntaxChecker = new QuerySyntaxCheck();
             queryHistory = new HashMap<>();
             queryHistoryArray = new ArrayList<>();
@@ -110,7 +107,7 @@ public class GUI extends JFrame implements MouseListener {
 
             queryTF = new JTextField();
             queryTF.setBounds(10, 40, 650, 25);
-            queryTF.addKeyListener(new KeyListenerImpl());
+            queryTF.addKeyListener(this);
             queryTF.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I, Event.CTRL_MASK), "ctrl+i");
             queryTF.getActionMap().put("ctrl+i", new AbstractAction() {
                 @Override
@@ -193,7 +190,11 @@ public class GUI extends JFrame implements MouseListener {
     }
 
     /**
-     * Check query syntax, process query if query is in proper format
+     * starts processing the query
+     *
+     * @param showErrors show errors in the query syntax
+     * @param sTime time when the processing was requested
+     * @return true - query processing executed without errors, else false
      */
     private boolean startQueryProcessor(boolean showErrors, long sTime) {
         String query = queryTF.getText().trim();
@@ -240,7 +241,7 @@ public class GUI extends JFrame implements MouseListener {
                 return false;
             }
             // add result to queryResult;
-            queryResult = queryProcessor.processQuery(query, mode);
+            queryResult = queryProcessor.processQuery(query);
             if (queryResult != null && queryResult.length > 0) {
                 tableModel.fireTableDataChanged();
                 showResultPanel(showErrors);
@@ -265,6 +266,13 @@ public class GUI extends JFrame implements MouseListener {
         return ret;
     }
 
+    /**
+     * show result panel, optionally with processing time and number of
+     * documents
+     *
+     * @param show show processing time and number of documents in the query
+     * result
+     */
     public final void showResultPanel(boolean show) {
         if (!show && queryHistory.containsKey(queryTF.getText())) {
             show = true;
@@ -277,6 +285,9 @@ public class GUI extends JFrame implements MouseListener {
         setLocationRelativeTo(null);
     }
 
+    /**
+     * hide the panel showing result documents
+     */
     public final void hideResultPanel() {
         if (queryHistory.containsKey(queryTF.getText())) {
             return;
@@ -285,11 +296,19 @@ public class GUI extends JFrame implements MouseListener {
         setLocationRelativeTo(null);
     }
 
+    /**
+     * hide the panel showing result documents
+     */
     private void setChangeIndex() {
         this.setVisible(false);
-        this.changeIndex = true;
+        changeIndex = true;
     }
 
+    /**
+     * opens the text file in OS default text editor
+     *
+     * @param row row pointer to the document to be opened
+     */
     private void openFile(int row) {
         Desktop desktop = Desktop.getDesktop();
         String fileURI = folder + "/" + Jtable.getValueAt(row, 0);
@@ -300,14 +319,27 @@ public class GUI extends JFrame implements MouseListener {
         }
     }
 
+    /**
+     *
+     * @return true if user clicked change index button, else false.
+     */
     public boolean isChangeIndex() {
         return changeIndex;
     }
 
+    /**
+     *
+     * @return true if user typed "EXIT" as query, else false;
+     */
     public boolean isQuit() {
         return quit;
     }
 
+    /**
+     * adds the query to history
+     *
+     * @param query query to be added to the history
+     */
     private void addToHistory(String query) {
         if (queryHistory.containsKey(query)) {
             queryHistoryArray.add(queryHistoryArray.remove(queryHistoryArray.indexOf(query)));
@@ -336,79 +368,87 @@ public class GUI extends JFrame implements MouseListener {
         );
     }
 
-    private class KeyListenerImpl implements KeyListener {
-
-        public KeyListenerImpl() {
-        }
-
-        @Override
-        public void keyTyped(KeyEvent e) {
-        }
-
-        @Override
-        public void keyPressed(KeyEvent e) {
-            int key = e.getKeyCode();
-            if (key == KeyEvent.VK_ENTER) {
-                if (startQueryProcessor(true, System.nanoTime())) {
-                    queryHistoryPointer = queryHistory.size() - 1;
-                }
-            } else if (key == KeyEvent.VK_ESCAPE) {
-                ((JTextField) e.getSource()).setText("");
-                queryHistoryPointer = queryHistory.size();
-                hideResultPanel();
-            } else if (key == KeyEvent.VK_UP) {
-                if (queryHistoryPointer > 0) {
-                    long sTime = System.nanoTime();
-                    queryHistoryPointer--;
-                    String query = queryHistoryArray.get(queryHistoryPointer);
-                    ((JTextField) e.getSource()).setText(query);
-                    queryResult = queryHistory.getOrDefault(query, new Posting[0]);
-                    if (queryResult.length > 0) {
-                        showResultPanel(true);
-                        processingTime.setText(BigDecimal
-                                .valueOf(((double) System.nanoTime() - sTime) / 1000000)
-                                + " milliseconds");
-                        numOfDocuments.setText(queryResult.length + "");
-                    }
-                }
-            } else if (key == KeyEvent.VK_DOWN) {
-                if (queryHistoryPointer < queryHistory.size() - 1) {
-                    long sTime = System.nanoTime();
-                    queryHistoryPointer++;
-                    String query = queryHistoryArray.get(queryHistoryPointer);
-                    ((JTextField) e.getSource()).setText(query);
-                    queryResult = queryHistory.getOrDefault(query, new Posting[0]);
-                    if (queryResult.length > 0) {
-                        showResultPanel(true);
-                        processingTime.setText(BigDecimal
-                                .valueOf(((double) System.nanoTime() - sTime) / 1000000)
-                                + " milliseconds");
-                        numOfDocuments.setText(queryResult.length + "");
-                    }
+    /**
+     * Invoked when a key has been pressed. See the class description for
+     * {@link KeyEvent} for a definition of a key pressed event.
+     *
+     * @param e textfield which generated this event
+     */
+    @Override
+    public void keyPressed(KeyEvent e) {
+        int key = e.getKeyCode();
+        if (key == KeyEvent.VK_ENTER) {     // user pressed ENTER key
+            if (startQueryProcessor(true, System.nanoTime())) {
+                queryHistoryPointer = queryHistory.size() - 1;
+            }
+        } else if (key == KeyEvent.VK_ESCAPE) {     // pressed ESCAPE key
+            ((JTextField) e.getSource()).setText("");
+            queryHistoryPointer = queryHistory.size();
+            hideResultPanel();
+        } else if (key == KeyEvent.VK_UP) {     // pressed up arrow key
+            if (queryHistoryPointer > 0) {
+                long sTime = System.nanoTime();
+                queryHistoryPointer--;
+                String query = queryHistoryArray.get(queryHistoryPointer);
+                ((JTextField) e.getSource()).setText(query);
+                queryResult = queryHistory.getOrDefault(query, new Posting[0]);
+                if (queryResult.length > 0) {
+                    showResultPanel(true);
+                    processingTime.setText(BigDecimal
+                            .valueOf(((double) System.nanoTime() - sTime) / 1000000)
+                            + " milliseconds");
+                    numOfDocuments.setText(queryResult.length + "");
                 }
             }
-        }
-
-        @Override
-        public void keyReleased(KeyEvent e) {
-            int key = e.getKeyCode();
-            String text = ((JTextField) e.getSource()).getText();
-            if (key == KeyEvent.VK_DELETE || key == KeyEvent.VK_BACK_SPACE) {
-                if (text.equals("")) {
-                    hideResultPanel();
-                } else if (text.length() >= 3) {
-                    startQueryProcessor(false, System.nanoTime());
-                }
-            } else if (key != KeyEvent.VK_ENTER && key != KeyEvent.VK_ESCAPE) {
-                if (text.length() >= 3) {
-                    startQueryProcessor(false, System.nanoTime());
-                } else if (text.length() < 3) {
-                    hideResultPanel();
+        } else if (key == KeyEvent.VK_DOWN) {       // pressed down arrow key
+            if (queryHistoryPointer < queryHistory.size() - 1) {
+                long sTime = System.nanoTime();
+                queryHistoryPointer++;
+                String query = queryHistoryArray.get(queryHistoryPointer);
+                ((JTextField) e.getSource()).setText(query);
+                queryResult = queryHistory.getOrDefault(query, new Posting[0]);
+                if (queryResult.length > 0) {
+                    showResultPanel(true);
+                    processingTime.setText(BigDecimal
+                            .valueOf(((double) System.nanoTime() - sTime) / 1000000)
+                            + " milliseconds");
+                    numOfDocuments.setText(queryResult.length + "");
                 }
             }
         }
     }
 
+    /**
+     * Invoked when a key has been released. See the class description for
+     * {@link KeyEvent} for a definition of a key released event.
+     *
+     * @param e textfield which generated this event
+     */
+    @Override
+    public void keyReleased(KeyEvent e) {
+        int key = e.getKeyCode();
+        String text = ((JTextField) e.getSource()).getText();
+        if (key == KeyEvent.VK_DELETE || key == KeyEvent.VK_BACK_SPACE) { // pressed delete/back space key
+            if (text.equals("")) {
+                hideResultPanel();
+            } else if (text.length() >= 3) {
+                startQueryProcessor(false, System.nanoTime());
+            }
+        } else if (key != KeyEvent.VK_ENTER && key != KeyEvent.VK_ESCAPE) { // pressed any key but enter/escape
+            if (text.length() >= 3) {
+                startQueryProcessor(false, System.nanoTime());
+            } else if (text.length() < 3) {
+                hideResultPanel();
+            }
+        }
+    }
+
+    /**
+     * Invoked when the mouse button has been clicked (pressed and released) on
+     * a component.
+     *
+     * @param e button which generated this event
+     */
     @Override
     public void mouseClicked(MouseEvent e) {
         if (e.getClickCount() == 2) {
@@ -417,27 +457,14 @@ public class GUI extends JFrame implements MouseListener {
         }
     }
 
-    @Override
-    public void mousePressed(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseReleased(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseEntered(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseExited(MouseEvent e) {
-    }
-
     class TableModel extends AbstractTableModel {
 
         private final String[] columnNames = {"File Name"};
         private final Class[] columnClass = new Class[]{String.class};
 
+        /**
+         * table model to list documents and optionally rank
+         */
         public TableModel() {
         }
 
@@ -475,5 +502,25 @@ public class GUI extends JFrame implements MouseListener {
         public boolean isCellEditable(int rowIndex, int columnIndex) {
             return false;
         }
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
     }
 }

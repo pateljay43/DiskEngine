@@ -26,15 +26,28 @@ import java.util.TreeSet;
  */
 public class QueryProcessor {
 
-    private static DiskPositionalIndex index;
-    private static PorterStemmer porterstemmer;
-    private static QueryStreamer queryStreamer;
-    private static PriorityQueue<Posting> pq;
+    private final DiskPositionalIndex index;
+    private final PorterStemmer porterstemmer;
+    private final QueryStreamer queryStreamer;
+    private final PriorityQueue<Posting> pq;
+    private final boolean mode;
 
-    public QueryProcessor(DiskPositionalIndex _index) {
+    /**
+     * Query processor for given disk positional index
+     *
+     * @param _index disk positional index instance
+     * @param _mode mode to process query (true = boolean, false = ranked)
+     */
+    public QueryProcessor(DiskPositionalIndex _index, boolean _mode) {
         index = _index;
         porterstemmer = new PorterStemmer();
         queryStreamer = new QueryStreamer();
+        mode = _mode;
+        if (!mode) {    // init priorityqueue only in ranked query processing
+            pq = new MyPriorityQueue(Constants.maxNumOfDocsToReturn, new PriorityQueueComparator(false));
+        } else {
+            pq = null;
+        }
     }
 
     /**
@@ -42,35 +55,25 @@ public class QueryProcessor {
      * mode, default return value is 10
      *
      * @param query query to be processed
-     * @param mode mode to process query (true = boolean, false = ranked)
      * @return query result containing the Postings
      */
-    public Posting[] processQuery(String query, boolean mode) {
-        return this.processQuery(query, mode, Constants.maxNumOfDocsToReturn);
+    public Posting[] processQuery(String query) {
+        return this.processQuery(query, Constants.maxNumOfDocsToReturn);
     }
 
     /**
      * process the query and returns the result from the disk index
      *
      * @param query query to be processed
-     * @param mode mode to process query (true = boolean, false = ranked)
      * @param initialCapacity number of elements to be returned
      * @return query result containing the Postings
      */
-    public Posting[] processQuery(String query, boolean mode, int initialCapacity) {
+    public Posting[] processQuery(String query, int initialCapacity) {
         query = query.replaceAll("[^A-Za-z0-9-+)(/ \"]", "")
                 .replaceAll("(( )( )+)", " ")
                 .trim();
         String[] orSplit = query.split("\\+");
         Posting[] result = null;
-
-        if (!mode) {    // init priorityqueue only in ranked query processing
-            if (pq == null) {
-                pq = new MyPriorityQueue(initialCapacity, new PriorityQueueComparator(false));
-            } else {
-                pq.clear();
-            }
-        }
         for (String subQuery : orSplit) {     // all subquery are without +
             Posting[] subResult = null;
 
@@ -98,7 +101,6 @@ public class QueryProcessor {
                             if (p != null) {
                                 p.calculateWqt(N, dft);
                                 p.calculateAd();
-                                p.finalizeAd();
                                 pq.offer(p);
                             }
                         }
@@ -135,6 +137,7 @@ public class QueryProcessor {
 //                posting.finalizeAd();
                 result[i] = posting;
             }
+            pq.clear();
         }
         return result;
     }
@@ -248,9 +251,9 @@ public class QueryProcessor {
     /**
      * Search positions where token1 and token2 are atmost nearK distance away
      *
-     * @param token1
-     * @param token2
-     * @return
+     * @param token1 Posting for token1
+     * @param token2 Posting for token2
+     * @return List of positions where token1 and token2 matched the requirement
      */
     private TreeSet<Long> matchPostings(Posting token1, Posting token2, int nearK) {
         TreeSet<Long> result = new TreeSet<>();

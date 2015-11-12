@@ -13,6 +13,12 @@ import static java.lang.StrictMath.log;
  */
 public class VariableByteEncoding {
 
+    /**
+     * encodes the integer n using variable byte encoding
+     *
+     * @param n integer to be encoded
+     * @return array of encoded bytes
+     */
     public static byte[] encodeNumber(int n) {
         if (n == 0) {
             return new byte[]{(byte) 128};

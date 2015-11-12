@@ -11,6 +11,7 @@ package constants;
  */
 public class Constants {
 
+    // File names
     public static String vocabFile = "vocab.bin";
     public static String postingFile = "postings.bin";
     public static String docWeightFile = "docWeights.bin.bin";
@@ -22,6 +23,10 @@ public class Constants {
      * okapi, 3 - wacky
      */
     public static int scheme = 1;
+    
+    // top 'mostFreqTermCount' terms encountered while indexing
     public static int mostFreqTermCount = 10;
+    
+    // number of documents to be returned in rank retrieval mode 
     public static int maxNumOfDocsToReturn = 10;
 }

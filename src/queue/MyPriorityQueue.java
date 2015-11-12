@@ -17,13 +17,29 @@ import java.util.Set;
  */
 public class MyPriorityQueue extends PriorityQueue<Posting> {
 
+    // list of docIds present in queue at any time
     private final Set<Integer> list;
 
+    /**
+     * Priority queue pre sorted based on the accumulator value of each element
+     * @param initialCapacity initial capacity of the queue
+     * @param comp comparator to be use for this queue
+     */
     public MyPriorityQueue(int initialCapacity, PriorityQueueComparator comp) {
         super(initialCapacity, comp);
         list = new HashSet<>(initialCapacity);
     }
 
+    /**
+     * Inserts the specified element into this priority queue.
+     *
+     * @param e element to be inserted in the queue
+     * @return {@code true} (as specified by {@link Queue#offer})
+     * @throws ClassCastException if the specified element cannot be
+     *         compared with elements currently in this priority queue
+     *         according to the priority queue's ordering
+     * @throws NullPointerException if the specified element is null
+     */
     @Override
     public boolean offer(Posting e) {
         int docId_e = e.getDocID();
@@ -49,9 +65,14 @@ public class MyPriorityQueue extends PriorityQueue<Posting> {
         return true;
     }
 
+    /**
+     * Removes all of the elements from this priority queue.
+     * The queue will be empty after this call returns.
+     */
     @Override
     public void clear() {
         super.clear();
+        list.clear();
     }
 
 }

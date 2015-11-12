@@ -13,7 +13,12 @@ public class QuerySyntaxCheck {
 
     private String errorMessage = "valid";
 
-    // returns a success or error message for the parenthesization of the query
+    /**
+     * returns a success or error message for the parenthesization of the query
+     *
+     * @param query query to be checked for proper use of parenthesis
+     * @return error message if parenthesis are not properly used
+     */
     public String checkParenthesis(String query) {
         boolean isParenthesis = true;
         errorMessage = "valid";
@@ -41,7 +46,12 @@ public class QuerySyntaxCheck {
         return errorMessage;
     }
 
-    // checks if query has quotes properly closed
+    /**
+     * checks if query has quotes properly closed
+     *
+     * @param query query to be checked for proper use of quotes
+     * @return error message if quotes are not properly used
+     */
     public String checkQuotes(String query) {
         boolean isQuote = true;
         errorMessage = "valid";
@@ -59,7 +69,13 @@ public class QuerySyntaxCheck {
         return errorMessage;
     }
 
-    // returns a success or error message that reports if query contains no empty sequence of literals
+    /**
+     * returns a success or error message that reports if query contains no
+     * empty sequence of literals
+     *
+     * @param query query to be checked for empty query literals
+     * @return error message if query contains empty literals
+     */
     public String checkNoEmptyQ(String query) {
         query = query.replaceAll("[^A-Za-z0-9-+ \"]", "");
         errorMessage = "valid";
@@ -80,7 +96,14 @@ public class QuerySyntaxCheck {
         return errorMessage;
     }
 
-    // returns a success or error message that reports if each Q_i has at least one positive literal
+    /**
+     * returns a success or error message that reports if each Q_i has at least
+     * one positive literal
+     *
+     * @param query query to be checked for at least one positive query literal
+     * @return error message if query does not contains at least one positive
+     * query literal
+     */
     public String checkOnePosLit(String query) {
         boolean isPos = true;
         errorMessage = "valid";
@@ -113,7 +136,12 @@ public class QuerySyntaxCheck {
         return errorMessage;
     }
 
-    // check if near operator used properly or not used at all
+    /**
+     * check if near operator used properly or not used at all
+     *
+     * @param query query to be checked for proper use of operator
+     * @return error message if operator are not properly used
+     */
     public String checkNearOperator(String query) {
         errorMessage = "valid";
         String s = "NEAR/";
@@ -136,8 +164,8 @@ public class QuerySyntaxCheck {
         return errorMessage;
     }
 
-    // true if query passed all three syntax checking conditions
     /**
+     * true if query passed all five syntax checking conditions
      *
      * @param query query to be checked.
      * @param mode true for boolean, false for ranked.
@@ -167,6 +195,10 @@ public class QuerySyntaxCheck {
         return true;
     }
 
+    /**
+     *
+     * @return error message generated while validation of query
+     */
     public String getErrorMessage() {
         return errorMessage;
     }

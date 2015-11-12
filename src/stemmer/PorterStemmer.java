@@ -38,9 +38,6 @@ public class PorterStemmer {
     // this regex pattern tests if the token has measure > 0 [at least one VC].
     private final Pattern mGr0;
 
-    //private final Pattern mGr0 = Pattern.compile("^(" + C + ")?" +
-    //"(" + V + C + ")+(" + V + ")?");
-    // add more Pattern variables for the following patterns:
     // m equals 1: token has measure == 1
     private final Pattern mEq1;
     // m greater than 1: token has measure > 1
@@ -51,14 +48,9 @@ public class PorterStemmer {
     //			unless they are L, S, or Z. (look up "backreferencing" to help 
     //			with this)
     private final String dC;
-//    private final Pattern doubleCon = Pattern.compile("(?i)\\w+(?:(?![aeioulsz])[a-z]){2}$");
+    // string not ending in (l,s or z)
     private final Pattern notLSZ;
-    // m equals 1, Cvc: token is in Cvc form, where the last c is not w, x, 
-    //			or y.
-//    private final String last_c2 = "[^aeiouwxy]$";
     private final Pattern o;
-    // has a vowel
-//    private final Pattern pV = Pattern.compile(v);
 
     public PorterStemmer() {
         c = "[^aeiou]";

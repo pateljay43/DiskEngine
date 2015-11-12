@@ -16,6 +16,7 @@ public class SimpleTokenStream implements TokenStream {
      * Constructs a SimpleTokenStream to read from the specified file.
      *
      * @param fileToOpen stream tokens from fileToOpen
+     * @throws java.io.FileNotFoundException if fileToOpen is not found
      */
     public SimpleTokenStream(File fileToOpen) throws FileNotFoundException {
         mReader = new Scanner(new FileReader(fileToOpen));

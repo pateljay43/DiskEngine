@@ -96,6 +96,10 @@ public class DiskEngine {
         }
     }
 
+    /**
+     * pick the directory for building/reading index
+     * @return Location to the selected folder
+     */
     private static String selectDirectory() {
         JFileChooser directoryPicker = new JFileChooser();
         directoryPicker.setCurrentDirectory(new java.io.File(""));

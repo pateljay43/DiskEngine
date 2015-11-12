@@ -37,6 +37,10 @@ public class DiskPositionalIndex {
     private Statistics statistics;
     private List<String> mFileNames;
 
+    /**
+     * Read the binary files containing index information for directory 'path'
+     * @param path path to the binary files as well as text documents
+     */
     public DiskPositionalIndex(String path) {
         try {
             mVocabList = new RandomAccessFile(new File(path, Constants.vocabFile), "r");
@@ -50,6 +54,15 @@ public class DiskPositionalIndex {
         }
     }
 
+    /**
+     * read the postings from the file
+     *
+     * @param postings file containing postings
+     * @param postingsPosition position from which reading should be started
+     * @param phrase true - keep the positions in the returned structure, else
+     * ignore the positions
+     * @return array of Posting structure (optionally positions and scheme)
+     */
     private Posting[] readPostingsFromFile(RandomAccessFile postings,
             long postingsPosition, boolean phrase) {
         try {
@@ -152,6 +165,13 @@ public class DiskPositionalIndex {
         return null;
     }
 
+    /**
+     * retrieve the postings for the given term
+     *
+     * @param term to be searched in index table
+     * @param phrase is the term part of phrase query?
+     * @return array of Posting structure (optionally positions and scheme)
+     */
     public Posting[] getPostings(String term, boolean phrase) {
         long postingsPosition = binarySearchVocabulary(term);
         if (postingsPosition >= 0) {
@@ -160,6 +180,12 @@ public class DiskPositionalIndex {
         return null;
     }
 
+    /**
+     * search for the location mapped with the given term
+     *
+     * @param term terms whose location is to be searched
+     * @return location mapping the postings with given term
+     */
     private long binarySearchVocabulary(String term) {
         // do a binary search over the vocabulary, using the vocabTable and the file vocabList.
         int i = 0, j = mVocabTable.length / 2 - 1;
@@ -196,14 +222,21 @@ public class DiskPositionalIndex {
         return -1;
     }
 
+    /**
+     * read file names with .txt extension in the given path
+     *
+     * @param path location to be searched for .txt files
+     * @return list of filenames in path directory
+     */
     private List<String> readFileNames(String path) {
         try {
-            final List<String> names = new ArrayList<String>();
+            final List<String> names = new ArrayList<>();
             final Path currentWorkingPath = Paths.get(path).toAbsolutePath();
 
             Files.walkFileTree(currentWorkingPath, new SimpleFileVisitor<Path>() {
                 int mDocumentID = 0;
 
+                @Override
                 public FileVisitResult preVisitDirectory(Path dir,
                         BasicFileAttributes attrs) {
                     // make sure we only process the current working directory
@@ -213,6 +246,7 @@ public class DiskPositionalIndex {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
 
+                @Override
                 public FileVisitResult visitFile(Path file,
                         BasicFileAttributes attrs) {
                     // only process .txt files
@@ -224,6 +258,7 @@ public class DiskPositionalIndex {
                 }
 
                 // don't throw exceptions if files are locked/other errors occur
+                @Override
                 public FileVisitResult visitFileFailed(Path file,
                         IOException e) {
 
@@ -237,12 +272,19 @@ public class DiskPositionalIndex {
         return null;
     }
 
-    private long[] readVocabTable(String indexName) {
+    /**
+     * read vocab table containing mapping of <term_location,postings_location>
+     *
+     * @param path path to the directory containing vocabTable file
+     * @return array containing
+     * [term1_location,postings1_location,term2_location,postings2_location,....]
+     */
+    private long[] readVocabTable(String path) {
         try {
             long[] vocabTable;
 
             RandomAccessFile tableFile = new RandomAccessFile(
-                    new File(indexName, Constants.vocabTableFile),
+                    new File(path, Constants.vocabTableFile),
                     "r");
 
             byte[] byteBuffer = new byte[4];
@@ -306,6 +348,10 @@ public class DiskPositionalIndex {
         return ByteBuffer.wrap(buffer).getDouble();
     }
 
+    /**
+     * 
+     * @return list of filenames which are indexed
+     */
     public List<String> getFileNames() {
         return mFileNames;
     }
@@ -318,6 +364,12 @@ public class DiskPositionalIndex {
         return mVocabTable.length / 2;
     }
 
+    /**
+     * read statistics of indexed files
+     *
+     * @param path path to the file containing pre computed index statistics
+     * @return structure containing index statistics
+     */
     private Statistics readStatistics(String path) {
         Statistics stat;
         try (RandomAccessFile indexStat = new RandomAccessFile(new File(path, Constants.indexStatFile), "r");) {
@@ -355,10 +407,19 @@ public class DiskPositionalIndex {
         return stat;
     }
 
+    /**
+     *
+     * @return statistics of current index
+     */
     public Statistics getStatistics() {
         return statistics;
     }
 
+    /**
+     * 
+     * @param docId document id
+     * @return file name mapped to given docId
+     */
     public String getFileName(int docId) {
         return mFileNames.get(docId);
     }
