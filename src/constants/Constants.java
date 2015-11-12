@@ -14,7 +14,7 @@ public class Constants {
     // File names
     public static String vocabFile = "vocab.bin";
     public static String postingFile = "postings.bin";
-    public static String docWeightFile = "docWeights.bin.bin";
+    public static String docWeightFile = "docWeights.bin";
     public static String vocabTableFile = "vocabTable.bin";
     public static String indexStatFile = "indexStatistics.bin";
 

@@ -39,6 +39,7 @@ public class DiskPositionalIndex {
 
     /**
      * Read the binary files containing index information for directory 'path'
+     *
      * @param path path to the binary files as well as text documents
      */
     public DiskPositionalIndex(String path) {
@@ -79,19 +80,6 @@ public class DiskPositionalIndex {
             // initialize the array that will hold the postings. 
             Posting[] postingsArray = new Posting[documentFrequency];
 
-            // write the following code:
-            // read 4 bytes at a time from the file, until you have read as many
-            //    postings as the document frequency promised.
-            // 
-            // skip the positions of term by term frequency
-            //    
-            //
-            // after each read, convert the bytes to an int posting. this value
-            //    is the GAP since the last posting. decode the document ID from
-            //    the gap and put it in the array.
-            //
-            // repeat until all postings are read.
-//            buffer = new byte[8];   // for wdt (double)
             int lastDocId = 0;
             double averageWeight = getAverageWeight();
             for (int i = 0; i < documentFrequency; i++) {
@@ -280,12 +268,9 @@ public class DiskPositionalIndex {
      * [term1_location,postings1_location,term2_location,postings2_location,....]
      */
     private long[] readVocabTable(String path) {
-        try {
+        try (RandomAccessFile tableFile = new RandomAccessFile(
+                new File(path, Constants.vocabTableFile), "r");) {
             long[] vocabTable;
-
-            RandomAccessFile tableFile = new RandomAccessFile(
-                    new File(path, Constants.vocabTableFile),
-                    "r");
 
             byte[] byteBuffer = new byte[4];
             // read number of terms in tableFile
@@ -303,7 +288,6 @@ public class DiskPositionalIndex {
                 vocabTable[tableIndex] = ByteBuffer.wrap(byteBuffer).getLong();
                 tableIndex++;
             }
-            tableFile.close();
             return vocabTable;
         } catch (FileNotFoundException ex) {
             System.out.println(ex.toString());
@@ -349,7 +333,7 @@ public class DiskPositionalIndex {
     }
 
     /**
-     * 
+     *
      * @return list of filenames which are indexed
      */
     public List<String> getFileNames() {
@@ -374,20 +358,23 @@ public class DiskPositionalIndex {
         Statistics stat;
         try (RandomAccessFile indexStat = new RandomAccessFile(new File(path, Constants.indexStatFile), "r");) {
             stat = new Statistics();
+
+            byte[] buffer = new byte[32];
+            indexStat.read(buffer, 0, buffer.length);
             // read term count
-            long termCount = indexStat.readLong();
+            long termCount = ByteBuffer.wrap(buffer, 0, 8).getLong();
             stat.setTermCount(termCount);
             // read number of type of terms
-            long numOfTypes = indexStat.readLong();
+            long numOfTypes = ByteBuffer.wrap(buffer, 8, 8).getLong();
             stat.setNumOfTypes(numOfTypes);
             // read average number of documents per term
-            double avg = indexStat.readDouble();
+            double avg = ByteBuffer.wrap(buffer, 16, 8).getDouble();
             stat.setAvgDocPerTerm(avg);
             // read total memory of all files used on secondary memory
-            long mem = indexStat.readLong();
+            long mem = ByteBuffer.wrap(buffer, 24, 8).getLong();
             stat.setTotalMemory(mem);
             // read all the terms to file as [num of byte of term, term]
-            byte[] buffer;
+
             for (int i = 0; i < Constants.mostFreqTermCount; i++) {
                 // number of bytes of this term
                 int bytelength = indexStat.readInt();
@@ -416,7 +403,7 @@ public class DiskPositionalIndex {
     }
 
     /**
-     * 
+     *
      * @param docId document id
      * @return file name mapped to given docId
      */

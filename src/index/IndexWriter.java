@@ -106,9 +106,10 @@ public class IndexWriter {
         frame.dispose();
         DecimalFormat df2 = new DecimalFormat("#.##");
         JOptionPane.showMessageDialog(null, "Time taken to build full index:\n\n"
-                + "In Memory index: " + df2.format((double) (t1 - sTime) / 1000000000) + " seconds\n"
+                + "In Memory index and docWeight file: "
+                + df2.format((double) (t1 - sTime) / 1000000000) + " seconds\n"
                 + "Vocab file index: " + df2.format((double) (t2 - t1) / 1000000000) + " seconds\n"
-                + "Vocab table, postings and docWeight file: "
+                + "Vocab table, postings: "
                 + df2.format((double) (t3 - t2) / 1000000000) + " seconds\n"
                 + "Index statistics file: " + df2.format((double) (t4 - t3) / 1000000000) + " seconds\n\n"
                 + "Total index time: " + df2.format(indexTime / 1000000000) + " seconds");
@@ -121,14 +122,12 @@ public class IndexWriter {
     private static void buildPostingsFile(String folder, PositionalInvertedIndex index,
             String[] dictionary, long[] vocabPositions) {
         try (FileOutputStream postingsFile = new FileOutputStream(
-                new File(folder, Constants.postingFile));) {
+                new File(folder, Constants.postingFile));
+                FileOutputStream vocabTable = new FileOutputStream(
+                        new File(folder, Constants.vocabTableFile));) {
 
             // simultaneously build the vocabulary table on disk, mapping a term index to a
             // file location in the postings file.
-            FileOutputStream vocabTable = new FileOutputStream(
-                    new File(folder, Constants.vocabTableFile)
-            );
-
             // the first thing we must write to the vocabTable file is the number of vocab terms.
             byte[] tSize = ByteBuffer.allocate(4)
                     .putInt(dictionary.length).array();
@@ -141,13 +140,10 @@ public class IndexWriter {
                 /*  write the vocab table entry for this term: the 8 byte location 
                  of the term in the vocab list file,
                  and the 8 byte location of the postings for the term in the postings file.*/
-                byte[] vPositionBytes = ByteBuffer.allocate(8)
-                        .putLong(vocabPositions[vocabI]).array();
-                vocabTable.write(vPositionBytes, 0, vPositionBytes.length);
-
-                byte[] pPositionBytes = ByteBuffer.allocate(8)
+                byte[] buffer = ByteBuffer.allocate(16)
+                        .putLong(vocabPositions[vocabI])
                         .putLong(postingsFile.getChannel().position()).array();
-                vocabTable.write(pPositionBytes, 0, pPositionBytes.length);
+                vocabTable.write(buffer, 0, buffer.length);
 
                 /* write the postings file for this term. 
                  first, the document frequency for the term, then
@@ -163,7 +159,6 @@ public class IndexWriter {
                 for (int docId : docIds) {
                     // write encoded docId as gap
                     byte[] docIdBytes = VariableByteEncoding.encodeNumber(docId - lastDocId);
-                    postingsFile.write(docIdBytes, 0, docIdBytes.length);
                     lastDocId = docId;
 
                     // list of positions
@@ -171,7 +166,11 @@ public class IndexWriter {
                     // write encoded term-frequency
                     int tf = positionalList.size();
                     byte[] termFreqBytes = VariableByteEncoding.encodeNumber(tf);
-                    postingsFile.write(termFreqBytes, 0, termFreqBytes.length);
+
+                    buffer = ByteBuffer.allocate(docIdBytes.length + termFreqBytes.length)
+                            .put(docIdBytes)
+                            .put(termFreqBytes).array();
+                    postingsFile.write(buffer, 0, buffer.length);
 
                     int lastPos = 0;
                     for (int pos : positionalList) {
@@ -182,12 +181,10 @@ public class IndexWriter {
                 }
                 vocabI++;
             }
-            vocabTable.close();
-            postingsFile.close();
         } catch (FileNotFoundException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -216,11 +213,11 @@ public class IndexWriter {
                 vocabPos += vocabWord.length();
             }
         } catch (FileNotFoundException ex) {
-            System.out.println(ex.toString());
+            Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
         } catch (UnsupportedEncodingException ex) {
-            System.out.println(ex.toString());
+            Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
-            System.out.println(ex.toString());
+            Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -233,7 +230,9 @@ public class IndexWriter {
      */
     private void indexFiles(String folder, final PositionalInvertedIndex index) {
         final Path currentWorkingPath = Paths.get(folder).toAbsolutePath();
-        try {
+        try (FileOutputStream docWeightFile
+                = new FileOutputStream(new File(mFolderPath, Constants.docWeightFile), true)) {
+
             Files.walkFileTree(currentWorkingPath, new SimpleFileVisitor<Path>() {
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir,
@@ -254,7 +253,7 @@ public class IndexWriter {
                         // then index the file and increase the document ID counter.
                         // System.out.println("Indexing file " + file.getFileName());
 
-                        indexFile(file.toFile(), index, mDocumentID);
+                        indexFile(file.toFile(), index, mDocumentID, docWeightFile);
                         mDocumentID++;
                         pb.setValue(mDocumentID);
                     }
@@ -270,17 +269,13 @@ public class IndexWriter {
             });
 
             // write average Ld
-            try (FileOutputStream docWeightFile = new FileOutputStream(
-                    new File(mFolderPath, Constants.docWeightFile), true)) {
-                double avgLd = Ld_sum / mDocumentID;
-                byte[] LdBytes = ByteBuffer.allocate(8)
-                        .putDouble(avgLd).array();
-                docWeightFile.write(LdBytes, 0, LdBytes.length);
-            }
+            double avgLd = Ld_sum / mDocumentID;
+            byte[] LdBytes = ByteBuffer.allocate(8)
+                    .putDouble(avgLd).array();
+            docWeightFile.write(LdBytes, 0, LdBytes.length);
         } catch (IOException ex) {
             Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
         }
-
     }
 
     /**
@@ -291,9 +286,8 @@ public class IndexWriter {
      * @param documentID document id mapped with given fileName
      */
     private void indexFile(File fileName, PositionalInvertedIndex index,
-            int documentID) {
-        try (FileOutputStream docWeightFile = new FileOutputStream(
-                new File(mFolderPath, Constants.docWeightFile), true);) {
+            int documentID, FileOutputStream docWeightFile) {
+        try {
             SimpleTokenStream stream = new SimpleTokenStream(fileName);
             int position = 0;
             Set<String> terms = new HashSet<>();
@@ -333,23 +327,16 @@ public class IndexWriter {
                 sumOfWdt_2 = sumOfWdt_2 + Math.pow((1 + ((tf == 0) ? 0 : Math.log(tf))), 2);
             }
 
-            // write Ld
+            // write Ld, bytesize, averageTf
             double Ld = (sumOfWdt_2 == 0.0) ? 0.0 : Math.sqrt(sumOfWdt_2);
+            double avgTf = sum_tf / terms.size();
+            byte[] buffer = ByteBuffer.allocate(24)
+                    .putDouble(Ld)
+                    .putDouble(fileName.length())
+                    .putDouble(avgTf).array();
+            docWeightFile.write(buffer, 0, buffer.length);
+
             Ld_sum = Ld_sum + Ld;
-            byte[] LdBytes = ByteBuffer.allocate(8)
-                    .putDouble(Ld).array();
-            docWeightFile.write(LdBytes, 0, LdBytes.length);
-
-            // write byteSize
-            byte[] byteSize = ByteBuffer.allocate(8)
-                    .putDouble(fileName.length()).array();
-            docWeightFile.write(byteSize, 0, byteSize.length);
-
-            // write avg(tf) for this document
-            double numOfTerms = terms.size();
-            byte[] avgTf = ByteBuffer.allocate(8)
-                    .putDouble(sum_tf / numOfTerms).array();
-            docWeightFile.write(avgTf, 0, avgTf.length);
         } catch (Exception ex) {
             System.out.println(ex.toString());
         }
@@ -366,34 +353,25 @@ public class IndexWriter {
         try (FileOutputStream indexStatFile = new FileOutputStream(
                 new File(mFolderPath, Constants.indexStatFile));) {
 
+            long totalSecondaryMemory = 0;
+            File file = new File(mFolderPath + "\\" + Constants.vocabFile);
+            totalSecondaryMemory += file.length();
+            file = new File(mFolderPath + "\\" + Constants.postingFile);
+            totalSecondaryMemory += file.length();
+            file = new File(mFolderPath + "\\" + Constants.docWeightFile);
+            totalSecondaryMemory += file.length();
+            file = new File(mFolderPath + "\\" + Constants.vocabTableFile);
+            totalSecondaryMemory += file.length();
+
             // write
             // // term count
-            byte[] buffer = ByteBuffer.allocate(8)
-                    .putLong(numOfTerms).array();
-            indexStatFile.write(buffer, 0, buffer.length);
             // // number of type of terms
-            buffer = ByteBuffer.allocate(8)
-                    .putLong(termList.size()).array();
-            indexStatFile.write(buffer, 0, buffer.length);
             // // average number of documents per term
-            buffer = ByteBuffer.allocate(8)
-                    .putDouble(totalDocFreq / index.getTermCount()).array();
-            indexStatFile.write(buffer, 0, buffer.length);
             // // total memory of all files used on secondary memory
-            long totalSecondaryMemory = 0;
-            RandomAccessFile file = new RandomAccessFile(new File(mFolderPath, Constants.vocabFile), "r");
-            totalSecondaryMemory += file.length();
-            file.close();
-            file = new RandomAccessFile(new File(mFolderPath, Constants.postingFile), "r");
-            totalSecondaryMemory += file.length();
-            file.close();
-            file = new RandomAccessFile(new File(mFolderPath, Constants.docWeightFile), "r");
-            totalSecondaryMemory += file.length();
-            file.close();
-            file = new RandomAccessFile(new File(mFolderPath, Constants.vocabTableFile), "r");
-            totalSecondaryMemory += file.length();
-            file.close();
-            buffer = ByteBuffer.allocate(8)
+            byte[] buffer = ByteBuffer.allocate(32)
+                    .putLong(numOfTerms)
+                    .putLong(termList.size())
+                    .putDouble((double) totalDocFreq / index.getTermCount())
                     .putLong(totalSecondaryMemory).array();
             indexStatFile.write(buffer, 0, buffer.length);
 
@@ -403,10 +381,10 @@ public class IndexWriter {
             // // write all the terms to file as [num of byte of term, term]
             for (String term : mostFreqTerms) {
                 byte[] termByte = term.getBytes();
-                byte[] termByteLength = ByteBuffer.allocate(4)
-                        .putInt(termByte.length).array();
-                indexStatFile.write(termByteLength, 0, termByteLength.length);
-                indexStatFile.write(termByte, 0, termByte.length);
+                buffer = ByteBuffer.allocate(4 + termByte.length)
+                        .putInt(termByte.length)
+                        .put(termByte).array();
+                indexStatFile.write(buffer, 0, buffer.length);
             }
         } catch (FileNotFoundException ex) {
             Logger.getLogger(IndexWriter.class.getName()).log(Level.SEVERE, null, ex);
