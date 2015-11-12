@@ -21,7 +21,6 @@ import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,149 +43,153 @@ import javax.swing.table.AbstractTableModel;
  */
 public class GUI extends JFrame implements MouseListener {
 
-    private final DecimalFormat df2;
-    private final DiskPositionalIndex index;
-    private final QueryProcessor queryProcessor;
-    private final QuerySyntaxCheck syntaxChecker;
+    private DecimalFormat df2;
+    private DiskPositionalIndex index;
+    private QueryProcessor queryProcessor;
+    private QuerySyntaxCheck syntaxChecker;
     private static HashMap<String, Posting[]> queryHistory;
     private static ArrayList<String> queryHistoryArray;
     private static int queryHistoryPointer;
     private Posting[] queryResult;
 
-    private final JTextField queryTF;
-    private final JButton searchBtn;
-    private final JButton newDirectoryBtn;
+    private JTextField queryTF;
+    private JButton searchBtn;
+    private JButton newDirectoryBtn;
     // result table
-    private final TableModel tableModel;
-    private final JTable Jtable;
-    private final JScrollPane tableScrollPane;
-    private final JLabel processingTimeLBL;
-    private final JLabel processingTime;
-    private final JLabel numOfDocumentsLBL;
-    private final JLabel numOfDocuments;
-    private final JLabel indexStatisticsLBL;
+    private TableModel tableModel;
+    private JTable Jtable;
+    private JScrollPane tableScrollPane;
+    private JLabel processingTimeLBL;
+    private JLabel processingTime;
+    private JLabel numOfDocumentsLBL;
+    private JLabel numOfDocuments;
+    private JLabel indexStatisticsLBL;
     private boolean changeIndex;
-    private final String folder;
+    private String folder;
     private boolean quit;
-    private final int offset;
+    private int guiHeightOffset;
     private static boolean mode;
 
     public GUI(String _currentWorkingPath,
             boolean _mode) {
         if (System.getProperty("os.name").toLowerCase().contains("windows")) {
-            offset = 30;
+            guiHeightOffset = 30;
         } else {
-            offset = 20;
+            guiHeightOffset = 20;
         }
         quit = false;
         folder = _currentWorkingPath;
         mode = _mode;
         changeIndex = false;
-        index = new DiskPositionalIndex(folder);
-        queryProcessor = new QueryProcessor(index);
-        syntaxChecker = new QuerySyntaxCheck();
-        queryHistory = new HashMap<>();
-        queryHistoryArray = new ArrayList<>();
-        queryHistoryPointer = 0;
-        df2 = new DecimalFormat("#.##");
+        try {
+            index = new DiskPositionalIndex(folder);
+            queryProcessor = new QueryProcessor(index);
+            syntaxChecker = new QuerySyntaxCheck();
+            queryHistory = new HashMap<>();
+            queryHistoryArray = new ArrayList<>();
+            queryHistoryPointer = 0;
+            df2 = new DecimalFormat("#.##");
 
-        indexStatisticsLBL = new JLabel("Index Statistics:-  Press (Ctrl + i)");
-        indexStatisticsLBL.setBounds(15, 5, 250, 30);
-        add(indexStatisticsLBL);
+            indexStatisticsLBL = new JLabel("Index Statistics:-  Press (Ctrl + i)");
+            indexStatisticsLBL.setBounds(15, 5, 250, 30);
+            add(indexStatisticsLBL);
 
-        newDirectoryBtn = new JButton("Change Folder");
-        newDirectoryBtn.setBounds(670, 7, 120, 25);
-        newDirectoryBtn.addActionListener((ActionEvent e) -> {
-            setChangeIndex();
-        });
-        newDirectoryBtn.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I, Event.CTRL_MASK), "ctrl+i");
-        newDirectoryBtn.getActionMap().put("ctrl+i", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                showStatistics();
-            }
-        });
-        add(newDirectoryBtn);
+            newDirectoryBtn = new JButton("Change Folder");
+            newDirectoryBtn.setBounds(670, 7, 120, 25);
+            newDirectoryBtn.addActionListener((ActionEvent e) -> {
+                setChangeIndex();
+            });
+            newDirectoryBtn.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I, Event.CTRL_MASK), "ctrl+i");
+            newDirectoryBtn.getActionMap().put("ctrl+i", new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    showStatistics();
+                }
+            });
+            add(newDirectoryBtn);
 
-        queryTF = new JTextField();
-        queryTF.setBounds(10, 40, 650, 25);
-        queryTF.addKeyListener(new KeyListenerImpl());
-        queryTF.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I, Event.CTRL_MASK), "ctrl+i");
-        queryTF.getActionMap().put("ctrl+i", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                showStatistics();
-            }
-        });
-        add(queryTF);
+            queryTF = new JTextField();
+            queryTF.setBounds(10, 40, 650, 25);
+            queryTF.addKeyListener(new KeyListenerImpl());
+            queryTF.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I, Event.CTRL_MASK), "ctrl+i");
+            queryTF.getActionMap().put("ctrl+i", new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    showStatistics();
+                }
+            });
+            add(queryTF);
 
-        searchBtn = new JButton("Search");
-        searchBtn.setBounds(670, 40, 120, 25);
-        searchBtn.addActionListener((ActionEvent e) -> {
-            if (startQueryProcessor(true, System.nanoTime())) {
-                queryHistoryPointer = queryHistory.size() - 1;
-            }
-        });
-        searchBtn.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I, Event.CTRL_MASK), "ctrl+i");
-        searchBtn.getActionMap().put("ctrl+i", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                showStatistics();
-            }
-        });
-        add(searchBtn);
+            searchBtn = new JButton("Search");
+            searchBtn.setBounds(670, 40, 120, 25);
+            searchBtn.addActionListener((ActionEvent e) -> {
+                if (startQueryProcessor(true, System.nanoTime())) {
+                    queryHistoryPointer = queryHistory.size() - 1;
+                }
+            });
+            searchBtn.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I, Event.CTRL_MASK), "ctrl+i");
+            searchBtn.getActionMap().put("ctrl+i", new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    showStatistics();
+                }
+            });
+            add(searchBtn);
 
-        tableModel = new TableModel();
-        Jtable = new JTable(tableModel);
-        Jtable.setGridColor(Color.gray);
-        Jtable.setShowVerticalLines(false);
-        Jtable.addMouseListener(this);
-        Jtable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I, Event.CTRL_MASK), "ctrl+i");
-        Jtable.getActionMap().put("ctrl+i", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                showStatistics();
-            }
-        });
-        Jtable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "enter");
-        Jtable.getActionMap().put("enter", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                int row = ((JTable) e.getSource()).getSelectedRow();
-                openFile(row);
-            }
-        });
-        tableScrollPane = new JScrollPane(Jtable,
-                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        tableScrollPane.setBounds(10, 75, 780, 300);
-        add(tableScrollPane);
+            tableModel = new TableModel();
+            Jtable = new JTable(tableModel);
+            Jtable.setGridColor(Color.gray);
+            Jtable.setShowVerticalLines(false);
+            Jtable.addMouseListener(this);
+            Jtable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I, Event.CTRL_MASK), "ctrl+i");
+            Jtable.getActionMap().put("ctrl+i", new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    showStatistics();
+                }
+            });
+            Jtable.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "enter");
+            Jtable.getActionMap().put("enter", new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    int row = ((JTable) e.getSource()).getSelectedRow();
+                    openFile(row);
+                }
+            });
+            tableScrollPane = new JScrollPane(Jtable,
+                    JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                    JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+            tableScrollPane.setBounds(10, 75, 780, 183);
+            add(tableScrollPane);
 
-        processingTimeLBL = new JLabel("Processing Time: ");
-        processingTimeLBL.setBounds(15, 375, 150, 30);
-        add(processingTimeLBL);
+            processingTimeLBL = new JLabel("Processing Time: ");
+            processingTimeLBL.setBounds(15, 250, 150, 30);
+            add(processingTimeLBL);
 
-        processingTime = new JLabel("0.0 milliseconds");
-        processingTime.setBounds(140, 375, 150, 30);
-        add(processingTime);
+            processingTime = new JLabel("0.0 milliseconds");
+            processingTime.setBounds(140, 250, 150, 30);
+            add(processingTime);
 
-        numOfDocumentsLBL = new JLabel("Number Of Documents: ");
-        numOfDocumentsLBL.setBounds(450, 375, 150, 30);
-        add(numOfDocumentsLBL);
+            numOfDocumentsLBL = new JLabel("Number Of Documents: ");
+            numOfDocumentsLBL.setBounds(450, 250, 150, 30);
+            add(numOfDocumentsLBL);
 
-        numOfDocuments = new JLabel("0");
-        numOfDocuments.setBounds(610, 375, 100, 30);
-        add(numOfDocuments);
+            numOfDocuments = new JLabel("0");
+            numOfDocuments.setBounds(610, 250, 100, 30);
+            add(numOfDocuments);
 
-        setTitle("Enter your search query");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(800, 70 + offset);
-        setResizable(false);
-        setLayout(null);
-        setLocationRelativeTo(null);
-        setVisible(true);
+            setTitle("Enter your search query");
+            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setSize(800, 70 + guiHeightOffset);
+            setResizable(false);
+            setLayout(null);
+            setLocationRelativeTo(null);
+            setVisible(true);
 
-        queryTF.requestFocus();
+            queryTF.requestFocus();
+        } catch (Exception ex) {
+            changeIndex = true;
+        }
     }
 
     /**
@@ -270,7 +273,7 @@ public class GUI extends JFrame implements MouseListener {
         processingTimeLBL.setVisible(show);
         numOfDocuments.setVisible(show);
         numOfDocumentsLBL.setVisible(show);
-        setSize(800, 405 + offset);
+        setSize(800, 70 + 210 + guiHeightOffset);
         setLocationRelativeTo(null);
     }
 
@@ -278,7 +281,7 @@ public class GUI extends JFrame implements MouseListener {
         if (queryHistory.containsKey(queryTF.getText())) {
             return;
         }
-        setSize(800, 70 + offset);
+        setSize(800, 70 + guiHeightOffset);
         setLocationRelativeTo(null);
     }
 
@@ -325,10 +328,9 @@ public class GUI extends JFrame implements MouseListener {
                 "Number of Terms: " + stat.getTermCount() + "\n"
                 + "Number of Types (distinct tokens): " + stat.getNumOfTypes() + "\n"
                 + "Average number of documents per term: " + df2.format(stat.getAvgDocPerTerm()) + "\n"
-                + "Approximate total memory requirement: "
-                + df2.format(stat.getTotalMemory() / Math.pow(1024.00, 2))
-                + " Megabytes\n"
-                + "10 most frequent words statistics: (term, document frequency) \n"
+                + "Approximate total secondary memory (MB): "
+                + df2.format(stat.getTotalMemory() / Math.pow(1024.00, 2)) + "\n"
+                + "10 most frequent words statistics: \n\n"
                 + stat.getMostFreqTermsAsString(),
                 "Index Statistics", JOptionPane.INFORMATION_MESSAGE
         );
@@ -451,7 +453,7 @@ public class GUI extends JFrame implements MouseListener {
 
         @Override
         public int getRowCount() {
-            return queryResult.length;
+            return (queryResult == null) ? 0 : queryResult.length;
         }
 
         @Override
