@@ -22,7 +22,7 @@ public class Constants {
      * scheme to be used for ranked retrieval 0 - default, 1 - traditional, 2 -
      * okapi, 3 - wacky
      */
-    public static int scheme = 1;
+    public static int scheme = 0;
     
     // top 'mostFreqTermCount' terms encountered while indexing
     public static int mostFreqTermCount = 10;
