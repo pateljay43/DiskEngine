@@ -19,7 +19,7 @@ import java.util.List;
 public class PositionalInvertedIndex {
 
     // <term,<docID,<p1,p2,...,pn>>>
-    private final HashMap<String, TreeMap<Integer, ArrayList<Integer>>> mIndex;
+    private HashMap<String, TreeMap<Integer, ArrayList<Integer>>> mIndex;
     //private final HashMap<String, List<PositionalPosting>>
 
     /**
@@ -119,5 +119,10 @@ public class PositionalInvertedIndex {
             }
         }
         return temp.toArray(new String[k]);
+    }
+
+    public final void clear() {
+        mIndex.clear();
+        mIndex = null;
     }
 }

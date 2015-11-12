@@ -105,6 +105,7 @@ public class IndexWriter {
         double indexTime = ((double) System.nanoTime() - sTime);
         frame.dispose();
         DecimalFormat df2 = new DecimalFormat("#.##");
+        index.clear();
         JOptionPane.showMessageDialog(null, "Time taken to build full index:\n\n"
                 + "In Memory index and docWeight file: "
                 + df2.format((double) (t1 - sTime) / 1000000000) + " seconds\n"
