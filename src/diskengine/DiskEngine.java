@@ -1,5 +1,6 @@
 package diskengine;
 
+import static constants.Constants.mode;
 import static constants.Constants.scheme;
 import ui.GUI;
 import index.IndexWriter;
@@ -50,7 +51,7 @@ public class DiskEngine {
                     if (modeChoice == JOptionPane.CLOSED_OPTION) {
                         System.exit(0);
                     }
-                    boolean mode = (modeChoice == 0);
+                    mode = (modeChoice == 0);
 
                     if (!mode) {
                         // set default scheme for rank retrieval
@@ -73,7 +74,7 @@ public class DiskEngine {
                     }
 
                     // start GUI
-                    GUI gui = new GUI(folder, mode);
+                    GUI gui = new GUI(folder);
                     while (!gui.isChangeIndex()) {
                         try {
                             Thread.sleep(500);

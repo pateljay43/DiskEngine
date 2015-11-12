@@ -5,6 +5,7 @@
  */
 package ui;
 
+import constants.Constants;
 import structures.Posting;
 import structures.Statistics;
 import index.DiskPositionalIndex;
@@ -63,12 +64,11 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
     private int guiHeightOffset;
     private boolean quit;
     private boolean changeIndex;
-    private boolean mode;
     private static int queryHistoryPointer;
     private static HashMap<String, Posting[]> queryHistory;
     private static ArrayList<String> queryHistoryArray;
 
-    public GUI(String _currentWorkingPath, boolean _mode) {
+    public GUI(String _currentWorkingPath) {
         if (System.getProperty("os.name").toLowerCase().contains("windows")) {
             guiHeightOffset = 30;
         } else {
@@ -76,11 +76,10 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
         }
         quit = false;
         folder = _currentWorkingPath;
-        mode = _mode;
         changeIndex = false;
         try {
             index = new DiskPositionalIndex(folder);
-            queryProcessor = new QueryProcessor(index, mode);
+            queryProcessor = new QueryProcessor(index);
             syntaxChecker = new QuerySyntaxCheck();
             queryHistory = new HashMap<>();
             queryHistoryArray = new ArrayList<>();
@@ -185,6 +184,7 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
 
             queryTF.requestFocus();
         } catch (Exception ex) {
+            ex.printStackTrace();
             changeIndex = true;
         }
     }
@@ -215,7 +215,7 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
         }
         boolean ret = false;
         // check if query syntax is not valid
-        if (!syntaxChecker.isValidQuery(query, mode)) {       // invalid query
+        if (!syntaxChecker.isValidQuery(query)) {       // invalid query
             hideResultPanel();
             if (showErrors) {
                 JOptionPane.showMessageDialog(this,
@@ -430,6 +430,7 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
         String text = ((JTextField) e.getSource()).getText();
         if (key == KeyEvent.VK_DELETE || key == KeyEvent.VK_BACK_SPACE) { // pressed delete/back space key
             if (text.equals("")) {
+                queryHistoryPointer = queryHistory.size();
                 hideResultPanel();
             } else if (text.length() >= 3) {
                 startQueryProcessor(false, System.nanoTime());
@@ -466,9 +467,9 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
          * table model to list documents and optionally rank
          */
         public TableModel() {
-            if (mode) { // boolean
+            if (Constants.mode) { // boolean
                 columnNames = new String[]{"File Name"};
-                columnClass = new Class[]{String.class, String.class};
+                columnClass = new Class[]{String.class};
             } else {    // rank
                 columnNames = new String[]{"File Name", "Accumulator"};
                 columnClass = new Class[]{String.class, String.class};

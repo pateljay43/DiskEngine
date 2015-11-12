@@ -29,4 +29,7 @@ public class Constants {
     
     // number of documents to be returned in rank retrieval mode 
     public static int maxNumOfDocsToReturn = 10;
+    
+    // read mode; true - boolean, false - rank
+    public static boolean mode = true;
 }

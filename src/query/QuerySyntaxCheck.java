@@ -168,10 +168,10 @@ public class QuerySyntaxCheck {
      * true if query passed all five syntax checking conditions
      *
      * @param query query to be checked.
-     * @param mode true for boolean, false for ranked.
      * @return true if the query is valid; else false.
      */
-    public boolean isValidQuery(String query, boolean mode) {
+    public boolean isValidQuery(String query) {
+        boolean mode = constants.Constants.mode;
         if (!mode) {
             if (query.contains("\"") || query.contains("+") || query.contains("-")) {
                 errorMessage = "You cannot use quotes/operators in ranked mode!";

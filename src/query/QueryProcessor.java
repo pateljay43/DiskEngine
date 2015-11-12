@@ -36,13 +36,12 @@ public class QueryProcessor {
      * Query processor for given disk positional index
      *
      * @param _index disk positional index instance
-     * @param _mode mode to process query (true = boolean, false = ranked)
      */
-    public QueryProcessor(DiskPositionalIndex _index, boolean _mode) {
+    public QueryProcessor(DiskPositionalIndex _index) {
         index = _index;
         porterstemmer = new PorterStemmer();
         queryStreamer = new QueryStreamer();
-        mode = _mode;
+        mode = Constants.mode;
         if (!mode) {    // init priorityqueue only in ranked query processing
             pq = new MyPriorityQueue(Constants.maxNumOfDocsToReturn, new PriorityQueueComparator(false));
         } else {
@@ -191,25 +190,29 @@ public class QueryProcessor {
                         .getPostings(porterstemmer.processToken(tokens[i].toLowerCase()), true);
 
                 // go through all postings of token1 and token2
-                for (int j = 0, k = 0; j < postings1.length && k < postings2.length;) {
-                    // compare posting1.id to posting2.id
-                    int compare_value = postings1[j].getDocID() - postings2[k].getDocID();
-                    if (compare_value == 0) {       // same docId
-                        TreeSet<Long> search = matchPostings(postings1[j],
-                                postings2[k],
-                                nearK);
-                        TreeSet<Long> postings = result
-                                .getOrDefault(postings1[j].getDocID(), new TreeSet<>());
-                        postings.addAll(search);
+                if (postings1 != null && postings2 != null) {
+                    for (int j = 0, k = 0; j < postings1.length && k < postings2.length;) {
+                        // compare posting1.id to posting2.id
+                        int compare_value = postings1[j].getDocID() - postings2[k].getDocID();
+                        if (compare_value == 0) {       // same docId
+                            TreeSet<Long> search = matchPostings(postings1[j],
+                                    postings2[k],
+                                    nearK);
+                            TreeSet<Long> postings = result
+                                    .getOrDefault(postings1[j].getDocID(), new TreeSet<>());
+                            postings.addAll(search);
 
-                        result.put(postings1[j].getDocID(), postings);
-                        j++;
-                        k++;
-                    } else if (compare_value > 0) {    // postings1[j].id > postings2[k].id
-                        k++;
-                    } else if (compare_value < 0) {   // postings1[j].id < postings2[k].id
-                        j++;
+                            result.put(postings1[j].getDocID(), postings);
+                            j++;
+                            k++;
+                        } else if (compare_value > 0) {    // postings1[j].id > postings2[k].id
+                            k++;
+                        } else if (compare_value < 0) {   // postings1[j].id < postings2[k].id
+                            j++;
+                        }
                     }
+                }else{
+                    return null;
                 }
                 postings1 = postings2;
             }
