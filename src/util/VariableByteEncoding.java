@@ -1,6 +1,10 @@
 package util;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import static java.lang.StrictMath.log;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -32,5 +36,25 @@ public class VariableByteEncoding {
         } while (j >= 0);
         rv[i - 1] += 128;
         return rv;
+    }
+
+    public static int decodeNumber(final RandomAccessFile postings) {
+        int num = 0;
+        try {
+            int b = postings.readByte();
+            int n = 0;
+            while (true) {
+                if ((b & 0xff) < 128) {     // not the last byte - leading bit '0'
+                    n = 128 * n + b;
+                    b = postings.readByte();
+                } else {        // last byte - leading bit '1'
+                    num = (128 * n + ((b - 128) & 0xff));
+                    break;
+                }
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(VariableByteEncoding.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return num;
     }
 }
