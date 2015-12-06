@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import util.VariableByteEncoding;
 
 /**
  *
@@ -86,34 +87,13 @@ public class DiskPositionalIndex {
                 postingsArray[i] = new Posting();
 
                 // read docID
-                byte b = postings.readByte();
-                int n = 0, gap;
-                while (true) {
-                    if ((b & 0xff) < 128) {     // not the last byte - leading bit '0'
-                        n = 128 * n + b;
-                        b = postings.readByte();
-                    } else {        // last byte - leading bit '1'
-                        gap = (128 * n + ((b - 128) & 0xff));
-                        break;
-                    }
-                }
+                int gap = VariableByteEncoding.decodeNumber(postings);
                 int docId = lastDocId + gap;
                 postingsArray[i].setDocID(docId);
                 lastDocId = docId;
 
                 // read term frequency of document
-                b = postings.readByte();
-                n = 0;
-                int tf = 0;
-                while (true) {
-                    if ((b & 0xff) < 128) {     // not the last byte - leading bit '0'
-                        n = 128 * n + b;
-                        b = postings.readByte();
-                    } else {        // last byte - leading bit '1'
-                        tf = (128 * n + ((b - 128) & 0xff));
-                        break;
-                    }
-                }
+                int tf = VariableByteEncoding.decodeNumber(postings);
                 postingsArray[i].setTf(tf);
 
                 // initialize positions array
@@ -122,18 +102,7 @@ public class DiskPositionalIndex {
                 // read positions
                 long lastPosition = 0;
                 for (int j = 0; j < tf; j++) {
-                    b = postings.readByte();
-                    n = 0;
-                    gap = 0;
-                    while (true) {
-                        if ((b & 0xff) < 128) {     // not the last byte - leading bit '0'
-                            n = 128 * n + b;
-                            b = postings.readByte();
-                        } else {        // last byte - leading bit '1'
-                            gap = (128 * n + ((b - 128) & 0xff));
-                            break;
-                        }
-                    }
+                    gap = VariableByteEncoding.decodeNumber(postings);
                     if (phrase) {       // store positions only for phrase query
                         long pos = lastPosition + gap;
                         postingsArray[i].setPosition(pos, j);
