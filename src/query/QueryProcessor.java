@@ -140,7 +140,6 @@ public class QueryProcessor {
             result = new Posting[size];
             for (int i = 0; i < size; i++) {
                 Posting posting = pq.poll();
-//                posting.finalizeAd();
                 result[i] = posting;
             }
             pq.clear();
