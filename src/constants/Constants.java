@@ -37,5 +37,5 @@ public class Constants {
     public static int cacheSize = 20;
 
     // test search engine for performance
-    public static boolean test = true;
+    public static boolean test = false;
 }
