@@ -1,11 +1,13 @@
 package diskengine;
 
+import static constants.Constants.test;
 import static constants.Constants.mode;
 import static constants.Constants.scheme;
 import ui.GUI;
 import index.IndexWriter;
 import java.io.File;
 import java.nio.file.Paths;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
@@ -15,6 +17,17 @@ public class DiskEngine {
 
     public static void main(String[] args) {
         while (true) {
+            int[] randomNums = new int[10000];
+            test = JOptionPane.showConfirmDialog(null,
+                    "Test the performance?",
+                    "Evaluate Search Engine",
+                    JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION;
+            if (test) {
+                Random r = new Random();
+                for (int i = 0; i < randomNums.length; i++) {
+                    randomNums[i] = r.nextInt(20);
+                }
+            }
             // select to build or read index from disk
             String[] options = {"Build Index", "Read Index"};
             int menuChoice = JOptionPane.showOptionDialog(null,
@@ -74,6 +87,17 @@ public class DiskEngine {
                     }
 
                     // start GUI
+                    if (test) {
+                        String[] queries = {"anything cool",
+                            "query angels", "white whale", "chone figgins",
+                            "portland rail", "kansas game series", "best pitching staff",
+                            "Mark Teixeira double play", "mix and match", "games in september",
+                            "14 game hitting streak", "Scioscia fastball", "good batting average",
+                            "Scioscia hitting homerun", "Mark raised bat", "pitchers start striking",
+                            "random hit", "baseball game", "angels came back", "american league"};
+                        new PerformanceTest(folder).start(queries, randomNums);
+                        continue;
+                    }
                     GUI gui = new GUI(folder);
                     while (!gui.isChangeIndex()) {
                         try {
@@ -89,6 +113,7 @@ public class DiskEngine {
                     gui.dispose();
                     break;
                 }
+
                 default: {
                     System.out.println("Invalid choice");
                     break;
