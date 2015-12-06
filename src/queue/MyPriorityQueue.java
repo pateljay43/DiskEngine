@@ -22,6 +22,7 @@ public class MyPriorityQueue extends PriorityQueue<Posting> {
 
     /**
      * Priority queue pre sorted based on the accumulator value of each element
+     *
      * @param initialCapacity initial capacity of the queue
      * @param comp comparator to be use for this queue
      */
@@ -35,9 +36,9 @@ public class MyPriorityQueue extends PriorityQueue<Posting> {
      *
      * @param e element to be inserted in the queue
      * @return {@code true} (as specified by {@link Queue#offer})
-     * @throws ClassCastException if the specified element cannot be
-     *         compared with elements currently in this priority queue
-     *         according to the priority queue's ordering
+     * @throws ClassCastException if the specified element cannot be compared
+     * with elements currently in this priority queue according to the priority
+     * queue's ordering
      * @throws NullPointerException if the specified element is null
      */
     @Override
@@ -66,8 +67,8 @@ public class MyPriorityQueue extends PriorityQueue<Posting> {
     }
 
     /**
-     * Removes all of the elements from this priority queue.
-     * The queue will be empty after this call returns.
+     * Removes all of the elements from this priority queue. The queue will be
+     * empty after this call returns.
      */
     @Override
     public void clear() {
