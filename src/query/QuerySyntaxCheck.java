@@ -5,6 +5,8 @@
  */
 package query;
 
+import constants.Constants;
+
 /**
  *
  * @author metehan
@@ -53,18 +55,20 @@ public class QuerySyntaxCheck {
      * @return error message if quotes are not properly used
      */
     public String checkQuotes(String query) {
-        boolean isQuote = true;
         errorMessage = "valid";
-        for (int i = 0; i < query.length(); i++) {
+        int i, count = 0;
+        for (i = 0; i < query.length(); i++) {
             char c = query.charAt(i);
-            if (!isQuote && ("" + c).matches("[+)(-]")) {
+            if (count == 2 || (count == 1 && ("" + c).matches("[+)(-]"))) {
                 break;
             } else if (c == '"') {
-                isQuote = !isQuote;
+                count++;
             }
         }
-        if (!isQuote) {
+        if (count % 2 != 0 || i != query.length()) {
             errorMessage = "Double Quotes not used correctly";
+        } else if (query.contains("\"") && query.length() == 2) {
+            errorMessage = "Empty Quotes";
         }
         return errorMessage;
     }
@@ -171,8 +175,11 @@ public class QuerySyntaxCheck {
      * @return true if the query is valid; else false.
      */
     public boolean isValidQuery(String query) {
-        boolean mode = constants.Constants.mode;
-        if (!mode) {
+        if (query == null || query.length() == 0 || !query.matches("[A-Za-z0-9-+ \"]*")) {
+            errorMessage = "unidentified symbols used";
+            return false;
+        }
+        if (!Constants.mode) {
             if (query.contains("\"") || query.contains("+") || query.contains("-")) {
                 errorMessage = "You cannot use quotes/operators in ranked mode!";
                 return false;
