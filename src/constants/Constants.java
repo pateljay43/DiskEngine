@@ -23,13 +23,19 @@ public class Constants {
      * okapi, 3 - wacky
      */
     public static int scheme = 0;
-    
+
     // top 'mostFreqTermCount' terms encountered while indexing
     public static int mostFreqTermCount = 10;
-    
+
     // number of documents to be returned in rank retrieval mode 
     public static int maxNumOfDocsToReturn = 10;
-    
+
     // read mode; true - boolean, false - rank
     public static boolean mode = true;
+
+    // max size of cache memory to store terms and its result
+    public static int cacheSize = 20;
+
+    // test search engine for performance
+    public static boolean test = true;
 }

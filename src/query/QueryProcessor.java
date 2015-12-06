@@ -5,6 +5,9 @@
  */
 package query;
 
+import cache.CacheMemory;
+import cache.Term;
+import com.sun.istack.internal.NotNull;
 import constants.Constants;
 import index.DiskPositionalIndex;
 import stemmer.PorterStemmer;
@@ -30,7 +33,9 @@ public class QueryProcessor {
     private final PorterStemmer porterstemmer;
     private final QueryStreamer queryStreamer;
     private final PriorityQueue<Posting> pq;
+    private final CacheMemory memory;
     private final boolean mode;
+    private int numOfDiskAccess;    // number of times disk read happened
 
     /**
      * Query processor for given disk positional index
@@ -47,6 +52,8 @@ public class QueryProcessor {
         } else {
             pq = null;
         }
+        memory = new CacheMemory(Constants.cacheSize);
+        numOfDiskAccess = 0;
     }
 
     /**
@@ -68,7 +75,7 @@ public class QueryProcessor {
      * @return query result containing the Postings
      */
     public Posting[] processQuery(String query, int initialCapacity) {
-        query = query.replaceAll("[^A-Za-z0-9-+)(/ \"]", "")
+        query = query.replaceAll("[^A-Za-z0-9-+/ \"]", "")
                 .replaceAll("(( )( )+)", " ")
                 .trim();
         String[] orSplit = query.split("\\+");
@@ -148,9 +155,24 @@ public class QueryProcessor {
      * @return Postings for given token
      */
     private Posting[] processToken(String token) {
-        Posting[] postings = index.getPostings(
-                porterstemmer.processToken(token.toLowerCase()), false);
+        token = porterstemmer.processToken(token.toLowerCase());
+        Posting[] postings = memory.search(token);
+        return postings != null ? postings : getPostingsFromDisk(token);
+    }
+
+    private Posting[] getPostingsFromDisk(@NotNull String token) {
+        Posting[] postings = index.getPostings(token, false);
+        memory.insert(new Term(token, postings));
+        numOfDiskAccess++;
         return postings;
+    }
+
+    public int getNumberOfDiskAccess() {
+        return numOfDiskAccess;
+    }
+
+    public void printCache() {
+        memory.print();
     }
 
     /**
@@ -211,7 +233,7 @@ public class QueryProcessor {
                             j++;
                         }
                     }
-                }else{
+                } else {
                     return null;
                 }
                 postings1 = postings2;
