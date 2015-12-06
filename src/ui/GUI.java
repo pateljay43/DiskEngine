@@ -23,12 +23,11 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -36,6 +35,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.event.ChangeEvent;
 import javax.swing.table.AbstractTableModel;
 
 /**
@@ -60,13 +60,12 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
     private JLabel numOfDocumentsLBL;
     private JLabel numOfDocuments;
     private JLabel indexStatisticsLBL;
+    private JCheckBox instantSearchCB;
     private String folder;
     private int guiHeightOffset;
     private boolean quit;
     private boolean changeIndex;
-    private static int queryHistoryPointer;
-    private static HashMap<String, Posting[]> queryHistory;
-    private static ArrayList<String> queryHistoryArray;
+    private boolean instantSearch;
 
     public GUI(String _currentWorkingPath) {
         if (System.getProperty("os.name").toLowerCase().contains("windows")) {
@@ -81,14 +80,26 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
             index = new DiskPositionalIndex(folder);
             queryProcessor = new QueryProcessor(index);
             syntaxChecker = new QuerySyntaxCheck();
-            queryHistory = new HashMap<>();
-            queryHistoryArray = new ArrayList<>();
-            queryHistoryPointer = 0;
             df2 = new DecimalFormat("#.##");
 
             indexStatisticsLBL = new JLabel("Index Statistics:-  Press (Ctrl + i)");
             indexStatisticsLBL.setBounds(15, 5, 250, 30);
             add(indexStatisticsLBL);
+
+            instantSearchCB = new JCheckBox("Instant Search");
+            instantSearchCB.setSelected(false);
+            instantSearchCB.setBounds(300, 5, 200, 30);
+            instantSearchCB.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I, Event.CTRL_MASK), "ctrl+i");
+            instantSearchCB.getActionMap().put("ctrl+i", new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    showStatistics();
+                }
+            });
+            instantSearchCB.addChangeListener((ChangeEvent e) -> {
+                instantSearch = ((JCheckBox) e.getSource()).isSelected();
+            });
+            add(instantSearchCB);
 
             newDirectoryBtn = new JButton("Change Folder");
             newDirectoryBtn.setBounds(670, 7, 120, 25);
@@ -119,9 +130,7 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
             searchBtn = new JButton("Search");
             searchBtn.setBounds(670, 40, 120, 25);
             searchBtn.addActionListener((ActionEvent e) -> {
-                if (startQueryProcessor(true, System.nanoTime())) {
-                    queryHistoryPointer = queryHistory.size() - 1;
-                }
+                startQueryProcessor(true, System.nanoTime());
             });
             searchBtn.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_I, Event.CTRL_MASK), "ctrl+i");
             searchBtn.getActionMap().put("ctrl+i", new AbstractAction() {
@@ -176,7 +185,8 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
 
             setTitle("Enter your search query");
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            setSize(800, 70 + guiHeightOffset);
+//            setSize(800, 70 + guiHeightOffset);
+            setSize(800, 70 + 210 + guiHeightOffset);
             setResizable(false);
             setLayout(null);
             setLocationRelativeTo(null);
@@ -198,21 +208,6 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
      */
     private boolean startQueryProcessor(boolean showErrors, long sTime) {
         String query = queryTF.getText().trim();
-        if (query == null || query.length() == 0) {
-            return false;
-        }
-        if (showErrors && queryHistory.containsKey(query)) {
-            queryResult = queryHistory.get(query);
-            if (queryResult != null) {
-                addToHistory(query);
-                showResultPanel(showErrors);
-                processingTime.setText(BigDecimal.valueOf(((double) System.nanoTime() - sTime) / 1000000)
-                        + " milliseconds");
-                numOfDocuments.setText(queryResult.length + "");
-                System.out.println("From Cache mem");
-                return true;
-            }
-        }
         boolean ret = false;
         // check if query syntax is not valid
         if (!syntaxChecker.isValidQuery(query)) {       // invalid query
@@ -249,7 +244,6 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
                     processingTime.setText(BigDecimal.valueOf(((double) System.nanoTime() - sTime) / 1000000)
                             + " milliseconds");
                     numOfDocuments.setText(queryResult.length + "");
-                    addToHistory(query);
                 }
             } else {        // no result
                 hideResultPanel();
@@ -274,26 +268,25 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
      * result
      */
     public final void showResultPanel(boolean show) {
-        if (!show && queryHistory.containsKey(queryTF.getText())) {
+        if (!show) {
             show = true;
         }
         processingTime.setVisible(show);
         processingTimeLBL.setVisible(show);
         numOfDocuments.setVisible(show);
         numOfDocumentsLBL.setVisible(show);
-        setSize(800, 70 + 210 + guiHeightOffset);
-        setLocationRelativeTo(null);
     }
 
     /**
      * hide the panel showing result documents
      */
     public final void hideResultPanel() {
-        if (queryHistory.containsKey(queryTF.getText())) {
-            return;
-        }
-        setSize(800, 70 + guiHeightOffset);
-        setLocationRelativeTo(null);
+        queryResult = new Posting[0];
+        tableModel.fireTableDataChanged();
+        processingTime.setVisible(false);
+        processingTimeLBL.setVisible(false);
+        numOfDocuments.setVisible(false);
+        numOfDocumentsLBL.setVisible(false);
     }
 
     /**
@@ -336,21 +329,6 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
     }
 
     /**
-     * adds the query to history
-     *
-     * @param query query to be added to the history
-     */
-    private void addToHistory(String query) {
-        if (queryHistory.containsKey(query)) {
-            queryHistoryArray.add(queryHistoryArray.remove(queryHistoryArray.indexOf(query)));
-        } else {
-            queryHistory.put(query, queryResult);
-            queryHistoryArray.add(query);
-            queryHistoryPointer = queryHistory.size() - 1;
-        }
-    }
-
-    /**
      * # of Terms, # of Types, Average number of documents per term, 10 most
      * frequent terms, Approximate total memory required by index
      */
@@ -378,43 +356,10 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
         if (key == KeyEvent.VK_ENTER) {     // user pressed ENTER key
-            if (startQueryProcessor(true, System.nanoTime())) {
-                queryHistoryPointer = queryHistory.size() - 1;
-            }
+            startQueryProcessor(true, System.nanoTime());
         } else if (key == KeyEvent.VK_ESCAPE) {     // pressed ESCAPE key
             ((JTextField) e.getSource()).setText("");
-            queryHistoryPointer = queryHistory.size();
             hideResultPanel();
-        } else if (key == KeyEvent.VK_UP) {     // pressed up arrow key
-            if (queryHistoryPointer > 0) {
-                long sTime = System.nanoTime();
-                queryHistoryPointer--;
-                String query = queryHistoryArray.get(queryHistoryPointer);
-                ((JTextField) e.getSource()).setText(query);
-                queryResult = queryHistory.getOrDefault(query, new Posting[0]);
-                if (queryResult.length > 0) {
-                    showResultPanel(true);
-                    processingTime.setText(BigDecimal
-                            .valueOf(((double) System.nanoTime() - sTime) / 1000000)
-                            + " milliseconds");
-                    numOfDocuments.setText(queryResult.length + "");
-                }
-            }
-        } else if (key == KeyEvent.VK_DOWN) {       // pressed down arrow key
-            if (queryHistoryPointer < queryHistory.size() - 1) {
-                long sTime = System.nanoTime();
-                queryHistoryPointer++;
-                String query = queryHistoryArray.get(queryHistoryPointer);
-                ((JTextField) e.getSource()).setText(query);
-                queryResult = queryHistory.getOrDefault(query, new Posting[0]);
-                if (queryResult.length > 0) {
-                    showResultPanel(true);
-                    processingTime.setText(BigDecimal
-                            .valueOf(((double) System.nanoTime() - sTime) / 1000000)
-                            + " milliseconds");
-                    numOfDocuments.setText(queryResult.length + "");
-                }
-            }
         }
     }
 
@@ -430,17 +375,18 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
         String text = ((JTextField) e.getSource()).getText();
         if (key == KeyEvent.VK_DELETE || key == KeyEvent.VK_BACK_SPACE) { // pressed delete/back space key
             if (text.equals("")) {
-                queryHistoryPointer = queryHistory.size();
                 hideResultPanel();
-//            } else if (text.length() >= 3) {
-//                startQueryProcessor(false, System.nanoTime());
+            } else if (instantSearch && text.length() >= 3) {
+                startQueryProcessor(false, System.nanoTime());
             }
         } else if (key != KeyEvent.VK_ENTER && key != KeyEvent.VK_ESCAPE) { // pressed any key but enter/escape
-//            if (text.length() >= 3) {
-//                startQueryProcessor(false, System.nanoTime());
-//            } else if (text.length() < 3) {
-//                hideResultPanel();
-//            }
+            if (instantSearch) {
+                if (text.length() >= 3) {
+                    startQueryProcessor(false, System.nanoTime());
+                } else if (text.length() < 3) {
+                    hideResultPanel();
+                }
+            }
         }
     }
 
@@ -456,6 +402,26 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
             int row = ((JTable) e.getSource()).getSelectedRow();
             openFile(row);
         }
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
     }
 
     class TableModel extends AbstractTableModel {
@@ -513,25 +479,5 @@ public class GUI extends JFrame implements MouseListener, KeyListener {
         public boolean isCellEditable(int rowIndex, int columnIndex) {
             return false;
         }
-    }
-
-    @Override
-    public void keyTyped(KeyEvent e) {
-    }
-
-    @Override
-    public void mousePressed(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseReleased(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseEntered(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseExited(MouseEvent e) {
     }
 }
