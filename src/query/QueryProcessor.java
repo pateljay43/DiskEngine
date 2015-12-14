@@ -7,7 +7,6 @@ package query;
 
 import cache.CacheMemory;
 import cache.Term;
-import com.sun.istack.internal.NotNull;
 import constants.Constants;
 import index.DiskPositionalIndex;
 import stemmer.PorterStemmer;
@@ -159,7 +158,7 @@ public class QueryProcessor {
         return postings != null ? postings : getPostingsFromDisk(token);
     }
 
-    private Posting[] getPostingsFromDisk(@NotNull String token) {
+    private Posting[] getPostingsFromDisk(String token) {
         Posting[] postings = index.getPostings(token, false);
         memory.insert(new Term(token, postings));
         numOfDiskAccess++;

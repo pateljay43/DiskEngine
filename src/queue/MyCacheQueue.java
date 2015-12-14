@@ -6,7 +6,6 @@
 package queue;
 
 import cache.Term;
-import com.sun.istack.internal.NotNull;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.PriorityQueue;
@@ -61,7 +60,7 @@ public class MyCacheQueue extends PriorityQueue<Term> {
         return true;
     }
 
-    public Posting[] getTerm(@NotNull String term) {
+    public Posting[] getTerm(String term) {
         Term t = list.get(term);
         if (t != null) {
             increaseFreqBy(term, 1);

@@ -5,7 +5,6 @@
  */
 package cache;
 
-import com.sun.istack.internal.NotNull;
 import structures.Posting;
 
 /**
@@ -18,7 +17,7 @@ public class Term {
     int frequency;
     Posting[] postings;
 
-    public Term(@NotNull String _term, @NotNull Posting[] _postings) {
+    public Term(String _term, Posting[] _postings) {
         term = _term;
         postings = _postings;
     }

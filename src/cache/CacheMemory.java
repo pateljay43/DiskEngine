@@ -5,7 +5,6 @@
  */
 package cache;
 
-import com.sun.istack.internal.NotNull;
 import queue.CacheQueueComparator;
 import queue.MyCacheQueue;
 import structures.Posting;
@@ -33,7 +32,7 @@ public class CacheMemory {
      * @param term term to be searched
      * @return null if term is not present in memory, else postings for the term
      */
-    public Posting[] search(@NotNull String term) {
+    public Posting[] search(String term) {
         return queue.getTerm(term);
     }
 
@@ -42,7 +41,7 @@ public class CacheMemory {
      *
      * @param term term to be inserted in cache memory
      */
-    public void insert(@NotNull Term term) {
+    public void insert(Term term) {
         term.increaseFreqBy(1);
         queue.offer(term);
     }
